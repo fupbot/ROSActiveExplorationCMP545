@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>ros_mapping_gui</name>
+  <version>0.0.0</version>
+  <description>Your Description Here</description>
+
+  <!-- One maintainer tag required, multiple allowed, one person per tag -->
+  <!-- Example:  -->
+  <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
+  <maintainer email="ugaldepereira@gmail.com">fupbot</maintainer>
+
+
+  <!-- One license tag required, multiple allowed, one license per tag -->
+  <!-- Commonly used license strings: -->
+  <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
+  <license>TODO</license>
+
+  <depend>catkin</depend>
+
+  <depend>roscpp</depend>
+  <depend>std_msgs</depend>
+  <depend>qtbase5-dev</depend>
+  <depend>libboost-date-time-dev</depend>
+  <depend>libboost-thread-dev</depend>
+  <depend>message_generation</depend>
+  <depend>rosconsole</depend>
+  <depend>roscpp_serialization</depend>
+  <depend>rostime</depend>
+  <depend>libqt5-core</depend>
+  <depend>libqt5-gui</depend>
+  <depend>libqt5-widgets</depend>
+
+
+
+
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+</package>
