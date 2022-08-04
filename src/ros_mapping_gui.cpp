@@ -64,7 +64,6 @@ static QPixmap QPixmapFromItem(QGraphicsItem *item){
 void RosMappingGUI::generateMap(){
   QImage image(img_side, img_side, QImage::Format_RGB32);
   QRgb value;
-  QListWidget listWidget;
 
   //iterates X image to plot obstacles
   for (int i=0;i<img_side;++i) {                          //iterate x
@@ -73,18 +72,8 @@ void RosMappingGUI::generateMap(){
 
       //if it is occupied, then paint the square black
       if (world[i][j].occupied == 1){
-
-        int lower_x = int(floor(i/grid_size)*grid_size);      //get the grid square boundaries that the
-        int upper_x = lower_x + grid_size;                    //occupied pixel is i
-        int lower_y = int(floor(j/grid_size)*grid_size);    //get the grid square boundaries
-        int upper_y = lower_y + grid_size;
-
-        for (int k = lower_x; k < upper_x+1; k++){
-          for (int l = lower_y; l < upper_y+1; l++){
-            value =  QColor("black").rgba();
-            image.setPixel(k, l, value);
-           }
-         }
+        value =  QColor("black").rgba();
+        image.setPixel(i, j, value);
        }
 
        else{
@@ -163,17 +152,6 @@ void RosMappingGUI::posePosition(const nav_msgs::Odometry::ConstPtr &msg){
    yaw_rot = yaw;
 }
 
-/* I really tried not to use global variables.
-//values to be used in next function
- std::tuple<double, double, double> RosMappingGUI::getPose(const nav_msgs::Odometry::ConstPtr &msg){
-  double x = msg->pose.pose.position.x;
-  double y = msg->pose.pose.position.y;
-  double w = msg->pose.pose.orientation.w;
-
-  return {x, y, w};   //returns tuple
-}
-*/
-
 //sonar function
 void RosMappingGUI::sonarObstacles(const sensor_msgs::PointCloudConstPtr& son){
   //yaw rotation in degrees 0 to 360 CCW
@@ -190,6 +168,7 @@ void RosMappingGUI::sonarObstacles(const sensor_msgs::PointCloudConstPtr& son){
 
     //if euclid distance less than 2m, store that value
     if (dist < 2.0){
+
       //y readings are inverted in order to be transfered to image coordinate
       double x_rotated = (son->points[i].x * cos(ang_deg*(3.1415/180))) - (son->points[i].y * sin(ang_deg*(3.1415/180)));  //rotation conversion
       double y_rotated = (son->points[i].x * sin(ang_deg*(3.1415/180))) + (son->points[i].y * cos(ang_deg*(3.1415/180)));
@@ -212,7 +191,21 @@ void RosMappingGUI::sonarObstacles(const sensor_msgs::PointCloudConstPtr& son){
       for (int k=0; k < 8; k++){
         if (int(sonar_readings[k][0]) == i &&
             int(sonar_readings[k][1]) == j){
-          world[i][j].occupied = 1;                //if reading is valid, mark obstacle
+
+          //variables to mark the occupancy grid that contains the pixel
+          int lower_x = int(floor(i/grid_size)*grid_size);        //get the grid square boundaries that the
+          int upper_x = lower_x + grid_size-1;                    //occupied pixel is i
+          int lower_y = int(floor(j/grid_size)*grid_size);        //get the grid square boundaries
+          int upper_y = lower_y + grid_size-1;
+
+          if (world[upper_x][upper_y].occupied == 0){           //if it has not visited the square before
+            for (int k = lower_x; k < upper_x+1; k++){
+              for (int l = lower_y; l < upper_y+1; l++){
+                world[k][l].occupied = 1;
+              }
+            }
+          }
+
         }
         else if(world[i][j].occupied == 1){
           world[i][j].occupied = 1;                //if there is already an obstacle, do nothing
