@@ -29,11 +29,12 @@
 
 //struct to store occupation data
 struct Obstacle {
-  bool occupied;      //whether it is occupied or not
   float prob_occ;     //occupation probability - increased upon revisits
+  int himm_occ;
+  bool occupied;      //whether it is occupied or not
 };
 
-//global variables (x,y) and rotation (w)
+//global variables and general program parameters
 extern double x_pos;
 extern double y_pos;
 extern double yaw_rot;
@@ -41,7 +42,11 @@ extern Obstacle world[500][500];  //world or map
 extern int img_side;              //side of image or scene - always square
 extern double scale_factor;
 extern int grid_size;
+extern double sonar_readings[8][2];      //array to store sonar readings in the point cloud format - 8 (x,y) readings
+extern bool btn_BAYES;
+extern bool btn_HIMM;
 
+//namespace
 namespace Ui {
 class RosMappingGUI;
 }
@@ -52,9 +57,11 @@ class RosMappingGUI : public QWidget
 
 public:
   explicit RosMappingGUI(QWidget *parent = nullptr);
-  void   posePosition(const nav_msgs::Odometry::ConstPtr& msg);           //function for odometry readings
-  std::tuple<double, double, double> getPose(const nav_msgs::Odometry::ConstPtr &msg);
-  void   sonarObstacles(const sensor_msgs::PointCloudConstPtr& son);       //function for sonar readinds
+  void  posePosition(const nav_msgs::Odometry::ConstPtr& msg);           //function for odometry readings
+  void  sonarObstacles(const sensor_msgs::PointCloudConstPtr& son);      //function for sonar readinds
+  void  bayesProb(int which_sonar);                                      //function for bayes probability of obstacles
+  void  HIMMProb(int which_sonar);                                       //function for HIMM probability of obstacles
+  void  markOccupied();
 
 
   //print map on the scene
@@ -63,21 +70,28 @@ public:
 
 public slots:
   void spinOnce();
+  void onBayesButtonClicked();
+  void onHIMMButtonClicked();
 
 private:
   Ui::RosMappingGUI *ui;
 
+  //ros variables
   QTimer *ros_timer;
   ros::NodeHandlePtr nh_;
   ros::Subscriber pose_sub_;
   ros::Subscriber sonar_sub_;
 
+  //scene variables
   QGraphicsScene *scene;
   QGraphicsRectItem *rectangle;
   QGraphicsEllipseItem *ellipse;
   QGraphicsPixmapItem *arrow;
   QGraphicsPolygonItem *triangle;
 
+  //button variables
+  QPushButton *pbtn_BAYES;
+  QPushButton *pbtn_HIMM;
 
   //map image
   QImage *map;
