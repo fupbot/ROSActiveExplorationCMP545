@@ -62,7 +62,9 @@ public:
   void  bayesProb(int which_sonar);                                      //function for bayes probability of obstacles
   void  HIMMProb(int which_sonar);                                       //function for HIMM probability of obstacles
   void  markOccupied();
-
+  std::pair<int, int> convertCoord(double scale, double angle, double trans_x, double trans_y, double x, double y);
+  const double ROBOT_FOOTPRINT_RADIUS = 0.40;
+  const double ROBOT_SONAR_ERROR      = 0.05;
 
   //print map on the scene
   void generateMap();

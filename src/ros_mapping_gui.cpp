@@ -1,3 +1,6 @@
+//v1.4 - Working HIMM and Bayes
+//@fupbot - Aug/22
+
 #include "ros_mapping_gui.h"
 #include "ui_ros_mapping_gui.h"
 
@@ -8,7 +11,7 @@ double yaw_rot;                     //robot rotation angle
 int img_side = 500;                 //to alter img size, change here and on the declaration of world below
 Obstacle world[500][500]{};         //world definition
 double scale_factor = 20.0;         //scale factor
-int grid_size = 6;                  //square pixels of minimum grid size
+int grid_size = 5;                  //square pixels of minimum grid size
 double sonar_readings[8][2]{};      //array to store sonar readings in the point cloud format - 8 (x,y) readings
 bool btn_BAYES = 0;
 bool btn_HIMM = 0;
@@ -110,7 +113,6 @@ void RosMappingGUI::generateMap(){
       if(btn_BAYES == 1 && btn_HIMM == 0){
         //if it is occupied, then paint the square black
         if (world[i][j].occupied == 1){
-          //std::cout << world[i][j].prob_occ << "\n";
 
           if (world[i][j].prob_occ > float(0.8)){
             value =  QColor("black").rgba();
@@ -121,15 +123,20 @@ void RosMappingGUI::generateMap(){
             value =  QColor("darkGray").rgba();
             image.setPixel(i, j, value);
           }
-          else if (world[i][j].prob_occ > float(0.5) &&
+          else if (world[i][j].prob_occ > float(0.55) &&
                    world[i][j].prob_occ <= float(0.65)) {
             value =  QColor("gray").rgba();
             image.setPixel(i, j, value);
           }
-          else if (world[i][j].prob_occ <= float(0.5)){
+          else if (world[i][j].prob_occ <= float(0.45)){
             value =  QColor("white").rgba();
             image.setPixel(i, j, value);
           }
+          else{
+            value =  QColor("lightGray").rgba();
+            image.setPixel(i, j, value);
+          }
+
          }
 
          else{
@@ -149,17 +156,17 @@ void RosMappingGUI::generateMap(){
           }
           else if (world[i][j].himm_occ > 6 &&
                    world[i][j].himm_occ < 11){
-            value =  QColor("darkGray").rgba();
+            value =  QColor("black").rgba();
             image.setPixel(i, j, value);
           }
           else if (world[i][j].himm_occ > 2 &&
                    world[i][j].himm_occ < 7){
-            value =  QColor("gray").rgba();
+            value =  QColor("darkGray").rgba();
             image.setPixel(i, j, value);
           }
           else if (world[i][j].himm_occ > -1 &&
                    world[i][j].himm_occ < 3){
-            value =  QColor("lightGray").rgba();
+            value =  QColor("gray").rgba();
             image.setPixel(i, j, value);
           }
           else{
@@ -222,7 +229,6 @@ void RosMappingGUI::generateMap(){
   scene->addPixmap(robot);
 }
 
-
 //odometry and rotation function
 void RosMappingGUI::posePosition(const nav_msgs::Odometry::ConstPtr &msg){
   //only start execution if one of the buttons is pressed
@@ -260,63 +266,6 @@ void RosMappingGUI::sonarObstacles(const sensor_msgs::PointCloudConstPtr& son){
     sonar_readings[i][0] = double(son->points[i].x);
     sonar_readings[i][1] = double(son->points[i].y);
   }
- /*
-    //double dist = sqrt(pow(son->points[i].x,2) + pow(son->points[i].y,2));     //euclid dist
-
-    //if euclid distance less than 2m, store that value
-    //if (dist < 2.0){
-
-      //y readings are inverted in order to be transfered to image coordinates
-//      double x_rotated = (son->points[i].x * cos(ang_deg*(3.1415/180))) - (son->points[i].y * sin(ang_deg*(3.1415/180)));  //rotation conversion
-//      double y_rotated = (son->points[i].x * sin(ang_deg*(3.1415/180))) + (son->points[i].y * cos(ang_deg*(3.1415/180)));
-
-      //rotation, scaling and translation
-//      sonar_readings[i][0] = scale_factor*x_rotated + scale_factor*x_pos + (img_side/2);
-//      sonar_readings[i][1] = -scale_factor*y_rotated - scale_factor*y_pos + (img_side/2);
-//    }
-//    else, store as zero
-//    else {
-//      sonar_readings[i][0] = 0.0;
-//      sonar_readings[i][1] = 0.0;
-//    }
-//  }
-
-  //robot initialization offset is at the center of picture (0,0) becomes ((img_side/2),(img_side/2))
-  //renders world
-  for (int i = 0; i < img_side; i++){     //x coordinate of image
-    for (int j=0; j < img_side; j++){     //y coordinate of image
-      for (int k=0; k < 8; k++){
-        if (int(sonar_readings[k][0]) == i &&
-            int(sonar_readings[k][1]) == j){
-
-          //variables to mark the occupancy grid that contains the pixel
-          int lower_x = int(floor(i/grid_size)*grid_size);        //get the grid square boundaries that the
-          int upper_x = lower_x + grid_size-1;                    //occupied pixel is i
-          int lower_y = int(floor(j/grid_size)*grid_size);        //get the grid square boundaries
-          int upper_y = lower_y + grid_size-1;
-
-          if (world[upper_x][upper_y].occupied == 0){           //if it has not visited the square before
-            for (int k = lower_x; k < upper_x+1; k++){
-              for (int l = lower_y; l < upper_y+1; l++){
-                world[k][l].occupied = 1;
-              }
-            }
-          }
-
-        }
-        else if(world[i][j].occupied == 1){
-          world[i][j].occupied = 1;                //if there is already an obstacle, do nothing
-        }
-        else{
-          world[i][j].occupied = 0;                //otherwise, mark as free (0)
-        }
-      }
-    }
-  }
-
-  //calls method to plot map
-  generateMap();
-*/
 
   //function to mark occupied cells in the world
   markOccupied();
@@ -326,211 +275,118 @@ void RosMappingGUI::sonarObstacles(const sensor_msgs::PointCloudConstPtr& son){
 void  RosMappingGUI::markOccupied(){
   //robot initialization offset is at the center of picture (0,0) becomes ((img_side/2),(img_side/2))
   //marks as occupied the cells whose probability is greater than 0.5
-  for (int i = 0; i < img_side; i++){                               //x coordinate of image
-    for (int j=0; j < img_side; j++){                               //y coordinate of image
+  for (int i = 0; i < img_side; i++){                                //x coordinate of image
+    for (int j = 0; j < img_side; j++){                               //y coordinate of image
 
       //variables to mark the occupancy grid that contains the pixel
       int lower_x = int(floor(i/grid_size)*grid_size);        //get the grid square boundaries that the
-      int upper_x = lower_x + grid_size-1;                    //occupied pixel is i
+      int upper_x = lower_x + grid_size;                      //occupied pixel is i
       int lower_y = int(floor(j/grid_size)*grid_size);        //get the grid square boundaries
-      int upper_y = lower_y + grid_size-1;
+      int upper_y = lower_y + grid_size;
 
-      //variable to store highest probability within the cell
-      float sum_obs   = float(0.0);
-      float sum_frees = float(0.0);
-      int count_obs   = 0;
-      int count_frees = 0;
+      if(world[i][j].occupied == true){
+        //bayes
+        if((world[i][j].prob_occ > world[lower_x][lower_y].prob_occ) ||
+           (world[i][j].prob_occ < world[lower_x][lower_y].prob_occ) ||
+           (world[i][j].prob_occ > world[upper_x][upper_y].prob_occ) ||
+           (world[i][j].prob_occ < world[upper_x][upper_y].prob_occ)){             //if square is already even, dont do anything
 
-
-      //BAYES marking of cells
-      if(btn_BAYES == 1 && btn_HIMM == 0){
-        //if it has been visited the square before
-        if((double(world[i][j].prob_occ) < 0.49 ||
-            double(world[i][j].prob_occ) > 0.51)){
-
-          for (int k = lower_x; k < upper_x+1; k++){
-            for (int l = lower_y; l < upper_y+1; l++){
-              if(double(world[k][l].prob_occ) < 0.49){                //points lower than obstacle
-                sum_frees = sum_frees + world[k][l].prob_occ;
-                count_frees++;
-              }
-              else if (double(world[k][l].prob_occ) > 0.51){          //points higher than obstacle
-                sum_obs = sum_obs + world[k][l].prob_occ;
-                count_obs++;
-              }
-              world[k][l].occupied = 1;                                      //occupied actually means visited
-            }
-          }
-
-          //mean probability of grid cell that is not 0.5
-          float mean_prob = 0.0;
-          if ( count_obs > count_frees ){                   //if any pixel is considered an obstacle -- maybe expand pixels?
-            mean_prob = sum_obs/count_obs;
-          }
-          else {
-            mean_prob = sum_frees/count_frees;
-          }
-
-
-          for (int k = lower_x; k < upper_x+1; k++){       //makes every point in cell the same value as the mean
-            for (int l = lower_y; l < upper_y+1; l++){
-              world[k][l].prob_occ = mean_prob;
-            }
-          }
-        }
-
-        //else if(world[i][j].occupied == 1){
-        //else if(world[i][j].prob_occ < float(0.49))
-          //world[i][j].occupied = 1;
-        //}
-        else{
-          world[i][j].occupied = 0;                //otherwise, mark as free (0)
-        }
-      }
-
-      //HIMM marking of cells
-      else{
-
-        //halt readings at -1
-        if (world[i][j].himm_occ < -1){
-          world[i][j].himm_occ = -1;
-        }
-        else if (world[i][j].himm_occ > 15){                 //latch obstacles as it is
-          for (int k = lower_x; k < upper_x+1; k++){
-            for (int l = lower_y; l < upper_y+1; l++){
-              world[k][l].himm_occ = 15;
-            }
-          }
-        }
-        else{
-
-
-        int sum_HIMM   = 0;
-        int count_HIMM = 0;
-
-        //int count_HIMM_neg = 0;
-        //if it is occupied
-//        if(world[i][j].himm_occ != 0 &&
-//           world[i][j].occupied == 0){    //only goes in cell once
-
-        if(world[i][j].himm_occ != 0 &&
-           world[i][j].occupied == 0){    //goes in cell once for the first time
-
-          //std::cout << world[i][j].himm_occ << "\n";
-
-          //GROWTH RATE OPERATOR
-//          if (world[i][j].himm_occ > -1){
-
-//          world[i][j].himm_occ = 3;
-//          world[i][j].himm_occ = int((world[i-1][j-1].himm_occ * 0.5) + (world[i][j-1].himm_occ * 0.5) + (world[i+1][j-1].himm_occ * 0.5) +
-//                                     (world[i-1][j].himm_occ * 0.5)   + (world[i][j].himm_occ * 1.0)   + (world[i+1][j].himm_occ * 0.5) +
-//                                     (world[i-1][j+1].himm_occ * 0.5) + (world[i][j+1].himm_occ * 0.5) + (world[i+1][j+1].himm_occ * 0.5));
-//          }
-
-          //loop grid cell
-
-          //THIS PART IS CAUSING THE CRASH
-          // |
-          // |
-          // v
-          for (int k = lower_x; k < upper_x+1; k++){
-            for (int l = lower_y; l < upper_y+1; l++){
-              world[k][l].occupied = 1;
-
-              //world[k][l].himm_occ = world[i][j].himm_occ;             //LEAVING ONLY THIS LINE SORT OF WORKS
-
-              if(world[k][l].himm_occ != 0){
-                count_HIMM++;                                       //count all positive readings
-                sum_HIMM = sum_HIMM + world[k][l].himm_occ;
-              }
-              //              else{
-              //                count_HIMM = 1;                                     //if not positive, mark as free
-              //                sum_HIMM = 0;
-              //              }
-
-            }
-          }
-
-          //          //makes every value in cell the mean value
-          //          //int temp = int((sum_HIMM - count_HIMM_neg)/(count_HIMM + count_HIMM_neg));
-
-          int temp = int(sum_HIMM/count_HIMM);
-
-          for (int k = lower_x; k < upper_x+1; k++){
-            for (int l = lower_y; l < upper_y+1; l++){
-              world[k][l].himm_occ = temp;
-            }
-          }
-        }
-        else if(world[i][j].himm_occ != 0 &&
-                world[i][j].occupied == 1){
-
-          if (world[i][j].himm_occ == world[lower_x][lower_y].himm_occ &&    //if it has already been averaged within the cell
-              world[i][j].himm_occ == world[upper_x][upper_y].himm_occ){}
-          else{
-
-            int sum_HIMM   = 0;
-            int count_HIMM = 0;
-
-            for (int k = lower_x; k < upper_x+1; k++){
-              for (int l = lower_y; l < upper_y+1; l++){
-                world[k][l].occupied = 1;
-
-                if(world[k][l].himm_occ != 0){
-                  count_HIMM++;                                       //count all positive readings
-                  sum_HIMM = sum_HIMM + world[k][l].himm_occ;
+            if(world[lower_x + grid_size/2][lower_y + grid_size/2].prob_occ < float(0.49) ||
+               world[lower_x + grid_size/2][lower_y + grid_size/2].prob_occ > float(0.51)){
+              for (int k = lower_x; k < upper_x; k++){
+                for (int l = lower_y; l < upper_y; l++){
+                  world[k][l].prob_occ = world[lower_x + grid_size/2][lower_y + grid_size/2].prob_occ;
+                  world[k][l].occupied = true;
                 }
-
               }
             }
-
-            int temp = int(sum_HIMM/count_HIMM);
-
-            for (int k = lower_x; k < upper_x+1; k++){
-              for (int l = lower_y; l < upper_y+1; l++){
-                world[k][l].himm_occ = temp;
-              }
-            }
-          }
-        }
-        else{
-          //world[i][j].occupied = 0;
-        }
       }
-     }
-    }
-  }
-
-      /*
-      for (int k=0; k < 8; k++){
-        if (int(sonar_readings[k][0]) == i &&
-            int(sonar_readings[k][1]) == j){
-
-          //variables to mark the occupancy grid that contains the pixel
-          int lower_x = int(floor(i/grid_size)*grid_size);        //get the grid square boundaries that the
-          int upper_x = lower_x + grid_size-1;                    //occupied pixel is i
-          int lower_y = int(floor(j/grid_size)*grid_size);        //get the grid square boundaries
-          int upper_y = lower_y + grid_size-1;
-
-          if (world[upper_x][upper_y].occupied == 0){             //if it has not visited the square before
-            for (int k = lower_x; k < upper_x+1; k++){
-              for (int l = lower_y; l < upper_y+1; l++){
-                world[k][l].occupied = 1;
+        //himm
+        if((world[i][j].himm_occ != world[lower_x][lower_y].himm_occ) ||
+           (world[i][j].himm_occ != world[upper_x-1][upper_y-1].himm_occ)){
+            if(world[i][j].himm_occ != 0){
+              for (int k = lower_x; k < upper_x; k++){
+                for (int l = lower_y; l < upper_y; l++){
+                  world[k][l].himm_occ = world[i][j].himm_occ;
+                  world[k][l].occupied = true;
+                }
               }
             }
-          }
-
-        }
-        else if(world[i][j].occupied == 1){
-          world[i][j].occupied = 1;                //if there is already an obstacle, do nothing
-        }
-        else{
-          world[i][j].occupied = 0;                //otherwise, mark as free (0)
         }
       }
     }
   }
-  */
+
+
+    //fill in the gaps
+
+    for (int i = int(grid_size*1.5); i < int(img_side - grid_size*1.5); i+=grid_size){                //x coordinate of image
+      for (int j = int(grid_size*1.5); j < int(img_side - grid_size*1.5); j+=grid_size){              //y coordinate of image
+
+      //variables to mark the occupancy grid that contains the pixel
+      int prev_x = int(i - grid_size);              //get the grid square boundaries that the
+      int post_x = int(i + grid_size);              //occupied pixel is i
+      int prev_y = int(j - grid_size);              //get the grid square boundaries
+      int post_y = int(j + grid_size);
+
+      float mean_free = 0.0;
+      //float mean_free_himm = 0.0;
+
+      if(world[i][j].occupied == 0){
+
+        int count_frees = 0;
+
+        for (int m = prev_x; m <= post_x; m+=grid_size){
+          for (int n = prev_y; n <= post_y; n+=grid_size){
+            if(world[m][n].prob_occ < float(0.5) || world[m][n].himm_occ < 0){
+              count_frees++;
+              mean_free += world[m][n].prob_occ;
+            }
+          }
+        }
+        mean_free = mean_free/count_frees;
+
+        //free space -- if most of neighbouring cells are free, then set as free
+        if (count_frees > 4){
+            for (int k = i - grid_size/2; k < i + grid_size/2; k++){
+              for (int l = j - grid_size/2; l < j + grid_size/2; l++){
+                world[k][l].himm_occ = -1;
+                world[k][l].prob_occ = mean_free;
+                world[k][l].occupied = true;
+              }
+            }
+        }
+      }
+
+      bool  up_down = false;
+      float mean_up_down = 0.0;
+      if (world[prev_x][prev_y].prob_occ > float(0.5) && world[post_x][post_y].prob_occ > float(0.5)){
+        up_down = true;
+        mean_up_down = (world[prev_x][prev_y].prob_occ + world[post_x][post_y].prob_occ)/2;
+      }
+
+      bool down_up = false;
+      float mean_down_up = 0.0;
+      if (world[prev_x][post_y].prob_occ > float(0.5) && world[post_x][prev_y].prob_occ > float(0.5)){
+        down_up = true;
+        mean_down_up = (world[prev_x][post_y].prob_occ + world[post_x][prev_y].prob_occ)/2;
+      }
+      //occupied space
+      else if (up_down || down_up){
+        for (int k = i - grid_size/2; k < i + grid_size/2; k++){
+          for (int l = j - grid_size/2; l < j + grid_size/2; l++){
+            if (up_down)
+              world[k][l].prob_occ = mean_up_down;
+            else
+              world[k][l].prob_occ = mean_down_up;
+
+            world[k][l].occupied = true;
+          }
+        }
+      }
+    }
+  }
+
   //calls method to calculate probabilty for each sensor
   for (int i = 0; i < 8; i++){
     if (btn_BAYES == 1 && btn_HIMM == 0){
@@ -545,6 +401,24 @@ void  RosMappingGUI::markOccupied(){
   generateMap();
 };
 
+//function to convert coordinates between frames of reference
+std::pair<int, int> RosMappingGUI::convertCoord(double scale, double angle, double trans_x, double trans_y, double x, double y){
+  //angle in radians
+  //trans_x and trans_y are translation distance in x and y
+  //x_pos and y_pos are robots coordinates
+
+  //rotate
+  double x_rotated = (x * cos(angle)) -
+                     (y * sin(angle));
+  double y_rotated = (x * sin(angle)) +
+                     (y * cos(angle));
+
+  //scale and translate
+  int x_new = int(((x_rotated  + x_pos)*scale) + trans_x);
+  int y_new = int((-(y_rotated + y_pos)*scale) + trans_y);
+
+  return std::make_pair(x_new, y_new);
+}
 
 //BAYES PROBABILITY CALCULATOR
 void RosMappingGUI::bayesProb(int which_sonar){
@@ -557,18 +431,6 @@ void RosMappingGUI::bayesProb(int which_sonar){
   double R = 5.18;
   //beta in bayes equation (maximum angle of sonar reading)
   double beta = 0.261799;     //equivalent to 15 degrees
-
-/*
-  //sonar readings are in the following angles according to robot frame of reference:
-  //sonar_readings[0][] = +90   -> +1.5708
-  //sonar_readings[1][] = +50   -> +0.872665
-  //sonar_readings[2][] = +30   -> +0.523599
-  //sonar_readings[3][] = +10   -> +0.174533
-  //sonar_readings[4][] = +350  -> -0.174533
-  //sonar_readings[5][] = +330  -> -0.523599
-  //sonar_readings[6][] = +310  -> -0.872665
-  //sonar_readings[7][] = +270  -> -1.5708
-*/
 
   //inverse angles of each sensor in radians relative to robot frame of reference
   double sonar_angles[8] = {-1.5708, -0.872665, -0.523599, -0.174533, 0.174533, 0.523599, 0.872665, 1.5708};
@@ -585,85 +447,102 @@ void RosMappingGUI::bayesProb(int which_sonar){
   double alpha = atan2(y_rot, x_rot);
 
   //calculate bayes probability
-  if(fabs(alpha) < beta  &&                   //only gets values that are within cone of readings
-     r < 4.0){                                //only gets readings that are under 4 meters
+  //if the reading is valid
+  if(fabs(alpha) < beta){                                           //only gets values that are within cone of readings                                                          //only gets readings that are under 4 meters
 
-    //loop through rectangular region of interest
-    for (int i = int(ceil(x_rot - fabs(r*cos(alpha)))); i < int(ceil(x_rot)+1); i++){
-      for (int j = int(ceil(-fabs(r*sin(alpha)))); j < int(ceil(fabs(r*sin(alpha))+1)); j++){
+    //convert pair of coordinates to WORLD coordinates
+    double yaw_2f = yaw_rot - sonar_angles[which_sonar];   //angle sonar to world
 
-        //get previous probability reading from world model
-        //angle to rotate back to robot frame and then to world frame
-        double yaw_2f = yaw_rot - sonar_angles[which_sonar];
+    //convert r and R to WORLD dimensions
+    double r_world = r*scale_factor;
+    double R_world = R*scale_factor;
 
-        //rotate
-        double x_prev = (i * cos(yaw_2f)) -
-                        (j * sin(yaw_2f));
-        double y_prev = (i * sin(yaw_2f)) +
-                        (j * cos(yaw_2f));
+    //find how squares fit along r
+    int num_cells = int(r_world/grid_size);
 
-        //scale and translate
-        int x_previous = int(((x_prev + x_pos)*scale_factor) + (img_side/2));
-        int y_previous = int((-(y_prev + y_pos)*scale_factor) + (img_side/2));
+    //coordinates of previous visited cell to check whether it has already been visited or not
+    int x_prev = 0;
+    int y_prev = 0;
 
-        //previous value for prob occupied
-        float previous_occ = world[x_previous][y_previous].prob_occ;
+    //loop every cell for every degree
+    for(int j = 0; j < num_cells+1; j++){
+      int radius = (j*grid_size) + (grid_size/2);
 
-        //---------------------------------------------------------
-        //region I -  possible true locations of sonar readings
-        //region II - locations that are know to not have obstacles
+        //loop every degree in the cone of readings
+        for(int i = -15; i < 16; i++){
 
-        //narrow down to work only on sonar frame of reference
-        if (fabs(atan2(j, i)) < beta){
+          //iterate from middle to right (CW), then from middle to left (CCW)
+          int res = 0;
+          if((i+15) < 16)      //0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 -1 -2 -3 -4 -5 -6 -7 -8 -9 -10 -11 -12 -13 -14 -15
+            res = i+15;
+          else
+            res = -i;
 
-          //region I - assumed sonar reading error of 5cm
-          if ((i > x_rot - 0.05) && (i < x_rot + 0.05)){
-            float previous_emp = 1 - previous_occ;                                      //previous value for prob empty
-            double prob_s_occ = 0.5 * (((R-r)/R) + ((beta - alpha)/beta)) * max;        //prob of reading S given it is occupied
-            double prob_s_emp = 1 - prob_s_occ;                                         //prob of reading S given it is empty
+          //angle of partial reading
+          double alpha_temp = (res*(3.1415/180));
 
-            double prob_occ_s = (prob_s_occ * double(previous_occ))/                    //prob of being occupied given reading S
-                                ((prob_s_occ* double(previous_occ)) +
-                                (prob_s_emp * double(previous_emp)));
+          //ang of reference for each iteration
+          double ang_ref = yaw_2f + alpha_temp;
 
-            //Update world.prob_occ struct
-            double x_prob = (i * cos(yaw_2f)) -                                      //rotate
-                            (j * sin(yaw_2f));
-            double y_prob = (i * sin(yaw_2f)) +
-                            (j * cos(yaw_2f));
+          double x_ref = (radius*cos(ang_ref)) +  (x_pos*scale_factor + img_side/2);
+          double y_ref = -(radius*sin(ang_ref)) + (-y_pos*scale_factor + img_side/2);
 
-            int x_post = int(((x_prob + x_pos)*scale_factor) +  (img_side/2));       //scale and translate
-            int y_post = int((-(y_prob + y_pos)*scale_factor) + (img_side/2));
+          int mid_x = int(floor(x_ref/grid_size)*grid_size  + grid_size/2);        //get the grid square boundaries that the
+          int mid_y = int(floor(y_ref/grid_size)*grid_size + grid_size/2);        //get the grid square boundaries
 
-            world[x_post][y_post].prob_occ = float(prob_occ_s);
+
+           //if readings are out of map's bounds
+          if(mid_x > 500 || mid_y > 500 || mid_x < 0 || mid_y < 0)
+            break;
+
+          //previous value for prob occupied
+          float previous_occ = world[mid_x][mid_y].prob_occ;
+
+          //if the cell has not been visited yet
+          if (x_prev != mid_x && y_prev != mid_y){
+
+            //BAYES region II - not occupied
+            if (radius < (r_world - grid_size)){
+
+              float previous_emp = 1 - previous_occ;                                                              //previous value for prob empty
+              double prob_s_emp = 0.5 * (((R_world-radius)/R_world) + ((beta - fabs(alpha_temp))/beta)) * max;    //prob of reading S given it is occupied
+              double prob_s_occ = 1 - prob_s_emp;                                                                //prob of reading S given it is empty
+
+              double prob_occ_s = (prob_s_occ * double(previous_occ))/                                           //prob of being occupied given reading S
+                                  ((prob_s_occ* double(previous_occ)) +
+                                  (prob_s_emp * double(previous_emp)));
+
+              //only takes in probabilities that are lower that the previous one for region II
+              if(prob_occ_s < double(previous_occ)){
+                world[mid_x][mid_y].occupied = true;
+                world[mid_x][mid_y].prob_occ = float(prob_occ_s);
+              }
+
+            }
+
+            //BAYES region I - occupied
+            else if(radius > (r_world - grid_size) && radius < (r_world + grid_size)){
+
+              float previous_emp = 1 - previous_occ;                                                                  //previous value for prob empty
+              double prob_s_occ = 0.5 * (((R_world-radius)/R_world) + ((beta - fabs(alpha_temp))/beta)) * max;        //prob of reading S given it is occupied
+              double prob_s_emp = 1 - prob_s_occ;                                                                     //prob of reading S given it is empty
+
+              double prob_occ_s = (prob_s_occ * double(previous_occ))/                                           //prob of being occupied given reading S
+                                  ((prob_s_occ* double(previous_occ)) +
+                                  (prob_s_emp * double(previous_emp)));
+
+
+              world[mid_x][mid_y].occupied = true;
+              world[mid_x][mid_y].prob_occ = float(prob_occ_s);
+
+            }
+            else{ }
+
+            //mark as visited
+            x_prev = mid_x;
+            y_prev = mid_y;
           }
 
-          //region II
-          else if (i < x_rot - 0.05){
-
-            float previous_emp = 1 - previous_occ;                                      //previous value for prob empty
-            double prob_s_emp = 0.5 * (((R-r)/R) + ((beta - alpha)/beta)) * max;        //prob of reading S given it is occupied
-            double prob_s_occ = 1 - prob_s_emp;                                         //prob of reading S given it is empty
-
-            double prob_occ_s = (prob_s_occ * double(previous_occ))/                    //prob of being occupied given reading S
-                                ((prob_s_occ* double(previous_occ)) +
-                                (prob_s_emp * double(previous_emp)));
-
-            //Update world.prob_occ struct
-            double x_prob = (i * cos(yaw_2f)) -                                      //rotate
-                            (j * sin(yaw_2f));
-            double y_prob = (i * sin(yaw_2f)) +
-                            (j * cos(yaw_2f));
-
-            int x_post = int(((x_prob + x_pos)*scale_factor) +  (img_side/2));       //scale and translate
-            int y_post = int((-(y_prob + y_pos)*scale_factor) + (img_side/2));
-
-            world[x_post][y_post].prob_occ = float(prob_occ_s);
-          }
-
-          //beyond reading
-          else{} //do nothing
-        }
       }
     }
   }
@@ -673,6 +552,9 @@ void RosMappingGUI::bayesProb(int which_sonar){
 void RosMappingGUI::HIMMProb(int which_sonar){
   //only start execution if HIMM button is pressed
   if (btn_BAYES == 1 && btn_HIMM == 0) return;
+
+  //beta (maximum angle of sonar reading)
+  double beta = 0.174533;     //equivalent to 10 degrees
 
   //inverse angles of each sensor in radians relative to robot frame of reference
   double sonar_angles[8] = {-1.5708, -0.872665, -0.523599, -0.174533, 0.174533, 0.523599, 0.872665, 1.5708};
@@ -684,72 +566,99 @@ void RosMappingGUI::HIMMProb(int which_sonar){
   double y_rot = (sonar_readings[which_sonar][0] * sin(sonar_angles[which_sonar])) +
                  (sonar_readings[which_sonar][1] * cos(sonar_angles[which_sonar]));
 
-  //calculates deviation from acoustic axis
-  double alpha = atan2(y_rot, x_rot);
-  //calculates distance from origin
+  //variables in bayes equation
   double r = sqrt(pow(x_rot, 2) + pow(y_rot, 2));
+  double alpha = atan2(y_rot, x_rot);
 
-  //if the selected cell is within 5 degress of acoustic axis
-  if (fabs(alpha) < 5*(3.1415/180)){
+  //calculate HIMM values
+  //if the reading is valid
+  if(fabs(alpha) < beta){                                           //only gets values that are within cone of readings                                                          //only gets readings that are under 4 meters
 
-    //update point that contains reading
+    //convert pair of coordinates to WORLD coordinates
+    double yaw_2f = yaw_rot - sonar_angles[which_sonar];   //angle sonar to world
 
-    //loop through rectangular region of interest
-    for (int i = int(ceil(x_rot - fabs(r*cos(alpha)))); i < int(ceil(x_rot)+1); i++){
-      for (int j = int(ceil(-fabs(r*sin(alpha)))); j < int(ceil(fabs(r*sin(alpha))+1)); j++){
+    //convert r to WORLD dimensions
+    double r_world = r*scale_factor;
 
-        //angle to rotate back to robot frame and then to world frame
-        double yaw_2f = yaw_rot - sonar_angles[which_sonar];
+    //find how squares fit along r
+    int num_cells = int(r_world/grid_size);
 
-        //rotate
-        double x_prev = (i * cos(yaw_2f)) -
-                        (j * sin(yaw_2f));
-        double y_prev = (i * sin(yaw_2f)) +
-                        (j * cos(yaw_2f));
+    //coordinates of previous visited cell to check whether it has already been visited or not
+    int x_prev = 0;
+    int y_prev = 0;
 
-        //scale and translate
-        int x_himm = int(((x_prev + x_pos)*scale_factor) + (img_side/2));
-        int y_himm = int((-(y_prev + y_pos)*scale_factor) + (img_side/2));
+    //loop every cell for every degree
+    for(int j = 0; j < num_cells+1; j++){
+      int radius = (j*grid_size) + (grid_size/2);
+
+        //loop every degree in the cone of readings
+        for(int i = -10; i < 11; i++){
+
+          //iterate from middle to right (CW), then from middle to left (CCW)
+          int res = 0;
+          if((i+10) < 11)      //0 1 2 3 4 5 6 7 8 9 10  -1 -2 -3 -4 -5 -6 -7 -8 -9 -10
+            res = i+10;
+          else
+            res = -i;
+
+          //angle of partial reading
+          double alpha_temp = (res*(3.1415/180));
+
+          //ang of reference for each iteration
+          double ang_ref = yaw_2f + alpha_temp;
+
+          //std::cout << res << "ang ref " << res*3.1415/180 << "\n";
+
+          double x_ref = (radius*cos(ang_ref)) +  (x_pos*scale_factor + img_side/2);
+          double y_ref = -(radius*sin(ang_ref)) + (-y_pos*scale_factor + img_side/2);
+
+          int mid_x = int(floor(x_ref/grid_size)*grid_size  + grid_size/2);        //get the grid square boundaries that the
+          int mid_y = int(floor(y_ref/grid_size)*grid_size + grid_size/2);         //get the grid square boundaries
 
 
-        //previous value for himm occupation criteria
-        int previous_himm = world[x_himm][y_himm].himm_occ;
+           //if readings are out of map's bounds
+          if(mid_x > 500 || mid_y > 500 || mid_x < 0 || mid_y < 0)
+            break;
 
-        //std::cout << "At x = " << x_himm << " and y = " << y_himm << "\n";
+          //previous value for prob occupied
+          int previous_occ = world[mid_x][mid_y].himm_occ;
 
-        //if it is at the point being read by the sonar
-        //if(i == int(x_rot) && j == int(y_rot)){
+          //boundary values
+          //max = 15
+          //min = -1
 
-        if((i > x_rot - 0.05) && (i < x_rot + 0.05) &&
-           (j > y_rot - 0.02) && (j < y_rot + 0.02)){
-          for (int i = x_himm - 2; i < x_himm + 3; i++){
-            for (int j = y_himm - 2; j < y_himm + 3; j++){
-              world[i][j].himm_occ = previous_himm + 3;           //increases and inflates pixel
+          //if the cell has not been visited yet
+          if (x_prev != mid_x && y_prev != mid_y){
+
+            //FREE
+            if (radius < (r_world - grid_size) || r > 4.5){
+              //mark occupied
+              world[mid_x][mid_y].occupied = true;
+              //LOWER boundary value
+              if(previous_occ - 1 < -1)
+                world[mid_x][mid_y].himm_occ = -1;
+              else
+                world[mid_x][mid_y].himm_occ = previous_occ - 1;
             }
-          }
-          //world[x_himm][y_himm].himm_occ = previous_himm + 3;   //increase
-          //debug
-          //std::cout << "Increasing... " << previous_himm + 3 << "\n";
-        }
-        else if((j > y_rot - 0.02) && (j < y_rot + 0.02) &&
-                (i < x_rot - 0.05)){
 
-          for (int i = x_himm - 2; i < x_himm + 3; i++){
-            for (int j = y_himm - 2; j < y_himm + 3; j++){
-              world[i][j].himm_occ = previous_himm - 1;           //decreases and inflates pixel
+            //OCCUPIED
+            else if(radius > (r_world - grid_size) && radius < (r_world + grid_size)){
+              //mark occupied
+              world[mid_x][mid_y].occupied = true;
+              //UPPER boundary value
+              if(previous_occ + 3 > 15)
+                world[mid_x][mid_y].himm_occ = 15;
+              else
+                world[mid_x][mid_y].himm_occ = previous_occ + 3;
             }
+            else{}
+
+            //mark as visited
+            x_prev = mid_x;
+            y_prev = mid_y;
           }
-          //world[x_himm][y_himm].himm_occ = previous_himm - 1;   //decrease
-          //std::cout << "Decreasing... " << previous_himm - 1 << "\n";
-        }
-        else{}
+
       }
     }
-
   }
-  //if it not within the cone of readings
-  else{}
-
 }
-
-
