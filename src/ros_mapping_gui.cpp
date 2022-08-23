@@ -1,4 +1,4 @@
-//v1.4 - Working HIMM and Bayes
+//v1.5 - semi-working navigation by harmonic potential field
 //@fupbot - Aug/22
 
 #include "ros_mapping_gui.h"
@@ -13,8 +13,13 @@ Obstacle world[500][500]{};         //world definition
 double scale_factor = 20.0;         //scale factor
 int grid_size = 5;                  //square pixels of minimum grid size
 double sonar_readings[8][2]{};      //array to store sonar readings in the point cloud format - 8 (x,y) readings
-bool btn_BAYES = 0;
-bool btn_HIMM = 0;
+bool btn_BAYES = false;
+bool btn_HIMM = false;
+bool btn_GOAL = false;
+bool pot_calculated   = false;
+bool field_calculated = false;
+bool show_field = false;
+std::pair<int,int> goal = std::make_pair (0,0); //goal for navigation
 
 //---------------------------------------------------------------------------------------
 //Widget configurations
@@ -29,6 +34,12 @@ RosMappingGUI::RosMappingGUI(QWidget *parent) :
   QObject::connect(ui->pbtn_BAYES, &QPushButton::clicked, this, &RosMappingGUI::onBayesButtonClicked);
   //QPushButton *pbtn_HIMM = new QPushButton(this);
   QObject::connect(ui->pbtn_HIMM, &QPushButton::clicked, this, &RosMappingGUI::onHIMMButtonClicked);
+  //spinbox to set x coordinate of goal
+  QObject::connect(ui->pbtn_GOAL, &QPushButton::clicked, this, &RosMappingGUI::onGoalButtonClicked);
+  //spinbox to set x coordinate of goal
+  QObject::connect(ui->pbtn_NAV, &QPushButton::clicked, this, &RosMappingGUI::onNavButtonClicked);
+  //show field
+  QObject::connect(ui->checkBox,  &QCheckBox::toggled, this, &RosMappingGUI::onFieldCheckboxClicked);
 
   //initialize world struct
   for (int i=0;i<img_side;++i) {                          //iterate x
@@ -36,6 +47,9 @@ RosMappingGUI::RosMappingGUI(QWidget *parent) :
       world[i][j].occupied = 0;
       world[i][j].prob_occ = 0.5;
       world[i][j].himm_occ = 0;
+      world[i][j].harm_pot = 0.0;
+      world[i][j].obst_goal = 0;
+      world[i][j].angle_pot = 0.0;
     }
   }
 
@@ -48,11 +62,16 @@ RosMappingGUI::RosMappingGUI(QWidget *parent) :
   ros_timer->start(100);  // set the rate to 1000ms
 
   // setup subscriber
-  std::string listen_topic, listen_topic2;
-  nh_->param<std::string>("listen_topic",listen_topic,"/RosAria/pose");
-  pose_sub_  = nh_->subscribe<nav_msgs::Odometry>(listen_topic, 1, &RosMappingGUI::posePosition, this);
-  nh_->param<std::string>("listen_topic2", listen_topic2, "/RosAria/sonar");
-  sonar_sub_ = nh_->subscribe<sensor_msgs::PointCloud>(listen_topic2, 1, &RosMappingGUI::sonarObstacles, this);
+  std::string listen_pose, listen_sonar, pub_topic;
+  nh_->param<std::string>("listen_topic",listen_pose,"/RosAria/pose");
+  pose_sub_  = nh_->subscribe<nav_msgs::Odometry>(listen_pose, 1, &RosMappingGUI::posePosition, this);
+  nh_->param<std::string>("listen_topic2", listen_sonar, "/RosAria/sonar");
+  sonar_sub_ = nh_->subscribe<sensor_msgs::PointCloud>(listen_sonar, 1, &RosMappingGUI::sonarObstacles, this);
+
+  //setup publisher
+  std::string pose_topic;
+  nh_->param<std::string>("pose_topic", pose_topic, "/RosAria/cmd_vel");
+  pub_topic_ = nh_->advertise<geometry_msgs::Twist>(pose_topic,1);
 
   //GraphicsView config ---------------------------------
   scene = new QGraphicsScene(this);
@@ -79,6 +98,15 @@ void RosMappingGUI::onBayesButtonClicked(){
   btn_BAYES = 1;
   btn_HIMM = 0;
   ui->pbtn_HIMM->setChecked(0);
+
+  //reset world
+  for (int i=0;i<img_side;++i) {                          //iterate x
+    for (int j=0;j<img_side;++j) {                        //iterate y
+      world[i][j].occupied = 0;
+      world[i][j].prob_occ = 0.5;
+      world[i][j].himm_occ = 0;
+    }
+  }
 };
 
 //function to check whether HIMM button is pressed
@@ -86,7 +114,35 @@ void RosMappingGUI::onHIMMButtonClicked(){
   btn_HIMM = 1;
   btn_BAYES = 0;
   ui->pbtn_BAYES->setChecked(0);
+
+  //reset world struct
+  for (int i=0;i<img_side;++i) {                          //iterate x
+    for (int j=0;j<img_side;++j) {                        //iterate y
+      world[i][j].occupied = 0;
+      world[i][j].prob_occ = 0.5;
+      world[i][j].himm_occ = 0;
+    }
+  }
 };
+
+//function to set (x,y) navigation goal
+void RosMappingGUI::onGoalButtonClicked(){
+  btn_GOAL = 1;
+  field_calculated = false;
+  goal.first  = ui->sb_setX->value();
+  goal.second = ui->sb_setY->value();
+};
+
+//function to start navigation calculating potential and heading
+void RosMappingGUI::onNavButtonClicked(){
+  calcHarmonicPot();
+  navGoal();
+}
+
+//checkbox to show or hide field
+void RosMappingGUI::onFieldCheckboxClicked(){
+  show_field = !show_field;
+}
 
 //function to print robot on scene
 static QPixmap QPixmapFromItem(QGraphicsItem *item){
@@ -149,7 +205,7 @@ void RosMappingGUI::generateMap(){
       else{
         //if it is occupied, then paint the square black
         if (world[i][j].occupied == 1){
-
+          //himm
           if(world[i][j].himm_occ > 10){
             value =  QColor("black").rgba();
             image.setPixel(i, j, value);
@@ -172,7 +228,45 @@ void RosMappingGUI::generateMap(){
           else{
             value =  QColor("white").rgba();
             image.setPixel(i, j, value);
+            //potential
+            if(show_field){
+              if(world[i][j].harm_pot > float(0.5)){
+                value =  qRgb(25,25,255);
+                image.setPixel(i, j, value);
+              }
+              else if (world[i][j].harm_pot > float(0.2) &&
+                       world[i][j].harm_pot < float(0.5)){
+                value =  qRgb(50,50,255);
+                image.setPixel(i, j, value);
+              }
+              else if (world[i][j].harm_pot > float(0.1) &&
+                       world[i][j].harm_pot < float(0.2)){
+                value =  qRgb(100,100,255);
+                image.setPixel(i, j, value);
+              }
+              else if (world[i][j].harm_pot > float(0.05) &&
+                       world[i][j].harm_pot < float(0.1)){
+                value =  qRgb(150,150,255);
+                image.setPixel(i, j, value);
+              }
+              else if (world[i][j].harm_pot > float(0.01) &&
+                       world[i][j].harm_pot < float(0.05)){
+                value =  qRgb(200,200,255);
+                image.setPixel(i, j, value);
+              }
+              else if (world[i][j].harm_pot > float(0.005) &&
+                       world[i][j].harm_pot < float(0.01)){
+                value =  qRgb(225,225,255);
+                image.setPixel(i, j, value);
+              }
+              else{
+                value =  QColor("white").rgba();
+                image.setPixel(i, j, value);
+              }
+            }
           }
+
+
         }
         else{
            value = QColor("lightGray").rgba();
@@ -197,21 +291,23 @@ void RosMappingGUI::generateMap(){
     }
   }
 
+  //convert radians to degrees full circle
+  double ang_deg = yaw_rot * (180/3.1415);
+  if (ang_deg < 0){
+    ang_deg = ang_deg + 360;
+  }
+
 
   //creates world pixmap
   scene->addPixmap(QPixmap::fromImage(image));
 
   //robot triangle
   QPolygonF Triangle;
-  Triangle.append(QPointF(-5.,0));
-  Triangle.append(QPointF(0.,-15));
-  Triangle.append(QPointF(5.,0));
-  Triangle.append(QPointF(-5.,0));
+  Triangle.append(QPointF(-5.,7.));
+  Triangle.append(QPointF(0.,-8.));
+  Triangle.append(QPointF(5.,7.));
+  Triangle.append(QPointF(-5.,7.));
 
-  double ang_deg = yaw_rot * (180/3.1415);
-  if (ang_deg < 0){
-    ang_deg = ang_deg + 360;
-  }
 
   //updates robot position and rotation
   QPainterPath p;
@@ -227,6 +323,113 @@ void RosMappingGUI::generateMap(){
   //add robot triangle to scene
   QPixmap robot = QPixmapFromItem(block);
   scene->addPixmap(robot);
+
+  //if goal has been set
+  if(btn_GOAL){
+    //marks position of goal on map
+    QPolygonF Goal_Cross;
+    Goal_Cross.append(QPointF(0.,3.));
+    Goal_Cross.append(QPointF(3.,6.));
+    Goal_Cross.append(QPointF(6.,3.));
+    Goal_Cross.append(QPointF(3.,0.));
+    Goal_Cross.append(QPointF(6.,-3.));
+    Goal_Cross.append(QPointF(3.,-6.));
+    Goal_Cross.append(QPointF(0.,-3.));
+    Goal_Cross.append(QPointF(-3.,-6.));
+    Goal_Cross.append(QPointF(-6.,-3.));
+    Goal_Cross.append(QPointF(-3.,0.));
+    Goal_Cross.append(QPointF(-6.,3.));
+    Goal_Cross.append(QPointF(-3.,6.));
+    Goal_Cross.append(QPointF(0.,3.));
+
+    //painter
+    QPainterPath g;
+    g.addPolygon(Goal_Cross);
+    QGraphicsPathItem *cross = scene->addPath(g);
+    cross->setBrush(QBrush("red"));
+    cross->setX(goal.first);
+    cross->setY(goal.second);
+
+    //add goal to scene
+    QPixmap goal = QPixmapFromItem(cross);
+    scene->addPixmap(goal);
+  }
+
+  //if potential field has been calculated
+  if(pot_calculated && !field_calculated && show_field){
+    for(int i = 0; i < img_side; i+=grid_size){
+      for(int j = 0; j < img_side; j+=grid_size){
+        if(world[i+1][j+1].occupied){
+          //marks position of goal on map
+          int x_i, x_e, y_i, y_e = 0;
+
+          if((world[i+1][j+1].angle_pot > float(0.52) && world[i+1][j+1].angle_pot < float(1.04)) ||
+             (world[i+1][j+1].angle_pot > float(3.66) && world[i+1][j+1].angle_pot < float(4.19))){
+            //between 30 and 60 deg or 210 and 240
+            x_i = i;
+            y_i = j+3;
+            x_e = i+3;
+            y_e = j;
+          }
+          //between 60 and 90
+          else if((world[i+1][j+1].angle_pot > float(1.04) && world[i+1][j+1].angle_pot < float(1.57)) ||
+                  (world[i+1][j+1].angle_pot > float(4.19) && world[i+1][j+1].angle_pot < float(4.71))){
+            x_i = i+1;
+            y_i = j+3;
+            x_e = i+2;
+            y_e = j+2;
+          }
+          //between 0 and 30
+          else if((world[i+1][j+1].angle_pot > float(0.0) && world[i+1][j+1].angle_pot < float(0.52)) ||
+                  (world[i+1][j+1].angle_pot > float(1.57) && world[i+1][j+1].angle_pot < float(3.66))){
+            x_i = i;
+            y_i = j+2;
+            x_e = i+3;
+            y_e = j+1;
+          }
+          //between 0 and -30
+          else if((world[i+1][j+1].angle_pot > float(-0.52) && world[i+1][j+1].angle_pot < float(0.0)) ||
+                  (world[i+1][j+1].angle_pot > float(2.62) && world[i+1][j+1].angle_pot < float(3.14))){
+            x_i = i;
+            y_i = j+1;
+            x_e = i+3;
+            y_e = j+2;
+          }
+          //between -30 and -60
+          else if((world[i+1][j+1].angle_pot > float(-1.04) && world[i+1][j+1].angle_pot < float(-0.52)) ||
+                  (world[i+1][j+1].angle_pot > float(2.62) && world[i+1][j+1].angle_pot < float(1.92))){
+            x_i = i;
+            y_i = j;
+            x_e = i+3;
+            y_e = j+3;
+          }
+          //between -60 and -90
+          else{
+            x_i = i;
+            y_i = j+1;
+            x_e = i+3;
+            y_e = j+2;
+          }
+
+          //painter
+          QPen pot;
+          pot.setBrush(Qt::red);
+
+          //pot.addRegion(line_pot);
+          QGraphicsLineItem *pot_ = scene->addLine(x_i, y_i, x_e, y_e, pot);
+          //pot_->setBrush(QBrush("green"));
+          //pot_->setX(i+2);
+          //pot_->setY(j+2);
+
+          //add goal to scene
+          QPixmap mypot = QPixmapFromItem(pot_);
+          scene->addPixmap(mypot);
+        }
+      }
+    }
+    //field_calculated = false;
+  }
+
 }
 
 //odometry and rotation function
@@ -399,6 +602,12 @@ void  RosMappingGUI::markOccupied(){
 
   //call function to generate map
   generateMap();
+
+  //navigation goal
+  if(ui->pbtn_NAV->isChecked() && pot_calculated){
+    navGoal();
+  }
+
 };
 
 //function to convert coordinates between frames of reference
@@ -661,4 +870,176 @@ void RosMappingGUI::HIMMProb(int which_sonar){
       }
     }
   }
+}
+
+//Harmonic Potential Calculator
+void RosMappingGUI::calcHarmonicPot(){
+  //if navigate button is not pressed or harmonic potentail was already calculated
+  if(!ui->pbtn_NAV->isChecked() || pot_calculated) return;
+
+  //std::cout << "Calculating harmonic potential... \n";
+
+  int iterations = 30; //number of iterations
+
+  for(int i = 0; i < img_side; i++){
+    for(int j = 0; j < img_side; j++){
+      //set obstacle potentials to 1
+      if(world[i][j].himm_occ > 0 || world[i][j].prob_occ > float(0.5)
+         || world[i][j].occupied == false){
+        world[i][j].harm_pot = float(1.0);
+        world[i][j].obst_goal = true;        //variable to keep obstacles' potential unchanged
+      }
+     }
+   }
+
+  //set goal potential to 0
+  for(int i = goal.first-2*grid_size; i < goal.first+2*grid_size; i++){
+    for(int j = goal.second-2*grid_size; j < goal.second+2*grid_size; j++){
+      world[i][j].harm_pot = float(0.0);
+      world[i][j].obst_goal = true;
+    }
+  }
+
+  //calculate harmonic potential
+  for(int k = 0; k < iterations; k++){
+    for(int i = 1; i < img_side-1; i++){
+      for(int j = 1; j < img_side-1; j++){       //start at 1 to not read outside border
+        //old potentials
+        float old_left  = world[i-1][j].harm_pot;
+        float old_up    = world[i][j-1].harm_pot;
+        //new potentials
+        float new_right = world[i][j+1].harm_pot;
+        float new_down  = world[i+1][j].harm_pot;
+
+        //cell potential
+        //if it is not obstacle or goal
+        if(!world[i][j].obst_goal)
+          world[i][j].harm_pot = float(0.25)*(old_left + old_up + new_right + new_down);
+      }
+    }
+  }
+
+
+  //calculate angle of heading to plot on map
+  for(int i = 1; i < img_side-1; i++){
+    for(int j = 1; j < img_side-1; j++){
+
+      ///define four quadrants
+      //x+ y+
+      //if((world[i-1][j].harm_pot - world[i+1][j].harm_pot)  )
+      float left, right, up, down = 0.0;
+      left  = world[i-1][j].harm_pot;
+      right = world[i+1][j].harm_pot;
+      up    = world[i][j-1].harm_pot;
+      down  = world[i][j+1].harm_pot;
+
+      float x_subgoal = left - right;
+      float y_subgoal = 0.0;
+
+      if(up > down)
+        y_subgoal = -(up - down);
+      else
+        y_subgoal = down - up;
+
+      //find direction for robot to move
+      world[i][j].angle_pot = atan2f(y_subgoal, x_subgoal);
+
+    }
+  }
+
+  //find the mean of angles for each grid cell
+  float temp_angle = 0.0;
+  for(int i = 0; i < img_side; i+=grid_size){
+    for(int j = 0; j < img_side; j+=grid_size){
+      //coordinates of each cell
+      int lower_x = i;
+      int upper_x = lower_x + grid_size-1;
+      int lower_y = j;
+      int upper_y = lower_y + grid_size-1;
+
+      //find mean of grid cell
+      for(int k = lower_x; k < upper_x; k++){
+        for(int l = lower_y; l < upper_y; l++){
+          temp_angle += world[k][l].angle_pot;
+        }
+      }
+
+      //calculate mean
+      temp_angle = temp_angle / (grid_size*grid_size);
+
+      //attribute mean
+      for(int k = lower_x; k < upper_x; k++){
+        for(int l = lower_y; l < upper_y; l++){
+          world[k][l].angle_pot = temp_angle;
+        }
+      }
+
+      //reset
+      temp_angle = 0.0;
+    }
+  }
+
+  //set variable to mark that harmonic potential was already calculated
+  pot_calculated = true;
+
+  //std::cout << "Potential set! \n";
+
+  //call map generator
+  generateMap();
+};
+
+//Navigate robot to goal
+void RosMappingGUI::navGoal(){
+  //if navigate button is not pressed and harmonic potential was not yet calculated
+  if(!ui->pbtn_NAV->isChecked() && !pot_calculated) return;
+
+    //global robot coordinates
+    int x_robot = int(x_pos*scale_factor + (img_side/2));
+    int y_robot = int(-y_pos*scale_factor + (img_side/2));
+
+    //new angle
+//    double new_angle = double(world[x_robot][y_robot].angle_pot);
+    double new_angle = 0.0;
+
+    /////////////////////////////////////////////////////////////////////////implement function to turn 45 deg if close to wall?
+    //get mean angle
+    int ctr = 0;
+    for(int i = x_robot-grid_size; i < x_robot+2*grid_size; i++){
+      for(int j = y_robot-grid_size; j < y_robot+2*grid_size; j++){
+        new_angle += double(world[i][j].angle_pot);
+        ctr++;
+      }
+    }
+    new_angle = new_angle/ctr;
+
+    //make turn to right angle
+    double temp = fabs(new_angle - yaw_rot);
+    if(new_angle > yaw_rot){
+      new_angle = temp;
+    }
+    else{
+      new_angle = -temp;
+    }
+
+    //set x velocity based on angle
+    double x_vel = 0.0;
+    if(temp > 0.78){
+      x_vel = 0.1;
+    }
+    else if(temp > 0.26 && temp < 0.78){
+      x_vel = 0.2;
+    }
+    else{
+      x_vel = 0.3;
+    }
+
+   //give commands to move towards subgoals
+    geometry_msgs::Twist vel;
+    vel.linear.x = x_vel;
+    vel.linear.y = 0;
+    vel.linear.z = 0;
+    vel.angular.x = 0;
+    vel.angular.y = 0;
+    vel.angular.z = new_angle;
+    pub_topic_.publish(vel);
 }

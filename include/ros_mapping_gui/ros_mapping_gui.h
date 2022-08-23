@@ -2,6 +2,7 @@
 #define ROS_MAPPING_GUI_H
 
 #include <QWidget>
+#include <QSpinBox>
 #include <QtGui>
 #include <QDialog>
 #include <QGraphicsScene>
@@ -10,6 +11,7 @@
 #include <QGraphicsPolygonItem>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsPathItem>
+#include <QCheckBox>
 #include <QHBoxLayout>
 #include <QListWidget>
 #include <QGraphicsView>
@@ -23,6 +25,7 @@
 #include <std_msgs/String.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Point32.h>
+#include <geometry_msgs/Twist.h>
 #include <tf/tf.h>
 #include <sensor_msgs/PointCloud.h>
 
@@ -30,8 +33,11 @@
 //struct to store occupation data
 struct Obstacle {
   float prob_occ;     //occupation probability - increased upon revisits
-  int himm_occ;
+  int himm_occ;       //himm occupation probability
   bool occupied;      //whether it is occupied or not
+  bool obst_goal;     //if it is goal or obstacle, do not change potential
+  float harm_pot;     //harmonic potential
+  float angle_pot;    //angle to plot field
 };
 
 //global variables and general program parameters
@@ -45,6 +51,11 @@ extern int grid_size;
 extern double sonar_readings[8][2];      //array to store sonar readings in the point cloud format - 8 (x,y) readings
 extern bool btn_BAYES;
 extern bool btn_HIMM;
+extern bool btn_GOAL;
+extern std::pair<int,int> goal;
+extern bool pot_calculated;
+extern bool field_calculated;
+extern bool show_field;
 
 //namespace
 namespace Ui {
@@ -63,6 +74,8 @@ public:
   void  HIMMProb(int which_sonar);                                       //function for HIMM probability of obstacles
   void  markOccupied();
   std::pair<int, int> convertCoord(double scale, double angle, double trans_x, double trans_y, double x, double y);
+  void calcHarmonicPot();
+  void navGoal();
   const double ROBOT_FOOTPRINT_RADIUS = 0.40;
   const double ROBOT_SONAR_ERROR      = 0.05;
 
@@ -74,6 +87,9 @@ public slots:
   void spinOnce();
   void onBayesButtonClicked();
   void onHIMMButtonClicked();
+  void onGoalButtonClicked();
+  void onNavButtonClicked();
+  void onFieldCheckboxClicked();
 
 private:
   Ui::RosMappingGUI *ui;
@@ -83,6 +99,7 @@ private:
   ros::NodeHandlePtr nh_;
   ros::Subscriber pose_sub_;
   ros::Subscriber sonar_sub_;
+  ros::Publisher  pub_topic_;
 
   //scene variables
   QGraphicsScene *scene;
@@ -94,6 +111,8 @@ private:
   //button variables
   QPushButton *pbtn_BAYES;
   QPushButton *pbtn_HIMM;
+  QCheckBox   *checkBox;
+
 
   //map image
   QImage *map;
