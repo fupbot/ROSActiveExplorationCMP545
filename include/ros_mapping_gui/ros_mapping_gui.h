@@ -11,6 +11,7 @@
 #include <QGraphicsPolygonItem>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsPathItem>
+#include <QProgressBar>
 #include <QCheckBox>
 #include <QHBoxLayout>
 #include <QListWidget>
@@ -112,7 +113,7 @@ private:
   QPushButton *pbtn_BAYES;
   QPushButton *pbtn_HIMM;
   QCheckBox   *checkBox;
-
+  QProgressBar *progressBar;
 
   //map image
   QImage *map;

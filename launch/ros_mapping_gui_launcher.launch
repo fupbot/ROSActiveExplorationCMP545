@@ -3,5 +3,5 @@
   <node name="ros_mapping_gui_node" pkg="ros_mapping_gui" type="ros_mapping_gui_node" output="screen"/>
 
   <!-- launch navigation package -->
-  <include file="/home/fup/catkin_ws/src/nav_pack/launch/nav_pack_launcher.launch" />
+  <!- include file="/home/fup/catkin_ws/src/nav_pack/launch/nav_pack_launcher.launch"  -->
 </launch>

@@ -135,8 +135,24 @@ void RosMappingGUI::onGoalButtonClicked(){
 
 //function to start navigation calculating potential and heading
 void RosMappingGUI::onNavButtonClicked(){
-  calcHarmonicPot();
-  navGoal();
+  //only calculated field once
+  if(!pot_calculated)
+    calcHarmonicPot();
+
+  //check if robot is in position
+  //global robot coordinates
+  int x_robot = int(x_pos*scale_factor + (img_side/2));
+  int y_robot = int(-y_pos*scale_factor + (img_side/2));
+
+  //if robot is not at goal position
+  if (!(x_robot > goal.first  - 3*grid_size &&
+        x_robot < goal.first  + 3*grid_size &&
+        y_robot > goal.second - 3*grid_size &&
+        y_robot < goal.second + 3*grid_size)){
+
+    //call navigation function
+      navGoal();
+  }
 }
 
 //checkbox to show or hide field
@@ -229,33 +245,33 @@ void RosMappingGUI::generateMap(){
             value =  QColor("white").rgba();
             image.setPixel(i, j, value);
             //potential
-            if(show_field){
-              if(world[i][j].harm_pot > float(0.5)){
+            /*if(show_field){
+              if(world[i][j].harm_pot > float(0.9)){
                 value =  qRgb(25,25,255);
                 image.setPixel(i, j, value);
               }
-              else if (world[i][j].harm_pot > float(0.2) &&
-                       world[i][j].harm_pot < float(0.5)){
+              else if (world[i][j].harm_pot > float(0.7) &&
+                       world[i][j].harm_pot < float(0.9)){
                 value =  qRgb(50,50,255);
                 image.setPixel(i, j, value);
               }
-              else if (world[i][j].harm_pot > float(0.1) &&
-                       world[i][j].harm_pot < float(0.2)){
+              else if (world[i][j].harm_pot > float(0.5) &&
+                       world[i][j].harm_pot < float(0.7)){
                 value =  qRgb(100,100,255);
                 image.setPixel(i, j, value);
               }
-              else if (world[i][j].harm_pot > float(0.05) &&
-                       world[i][j].harm_pot < float(0.1)){
+              else if (world[i][j].harm_pot > float(0.3) &&
+                       world[i][j].harm_pot < float(0.5)){
                 value =  qRgb(150,150,255);
                 image.setPixel(i, j, value);
               }
-              else if (world[i][j].harm_pot > float(0.01) &&
-                       world[i][j].harm_pot < float(0.05)){
+              else if (world[i][j].harm_pot > float(0.1) &&
+                       world[i][j].harm_pot < float(0.3)){
                 value =  qRgb(200,200,255);
                 image.setPixel(i, j, value);
               }
-              else if (world[i][j].harm_pot > float(0.005) &&
-                       world[i][j].harm_pot < float(0.01)){
+              else if (world[i][j].harm_pot > float(0.01) &&
+                       world[i][j].harm_pot < float(0.1)){
                 value =  qRgb(225,225,255);
                 image.setPixel(i, j, value);
               }
@@ -263,7 +279,7 @@ void RosMappingGUI::generateMap(){
                 value =  QColor("white").rgba();
                 image.setPixel(i, j, value);
               }
-            }
+            }*/
           }
 
 
@@ -359,77 +375,133 @@ void RosMappingGUI::generateMap(){
   if(pot_calculated && !field_calculated && show_field){
     for(int i = 0; i < img_side; i+=grid_size){
       for(int j = 0; j < img_side; j+=grid_size){
-        if(world[i+1][j+1].occupied){
+        if(world[i+(grid_size-1)/2][j+(grid_size-1)/2].occupied      &&
+           (world[i+(grid_size-1)/2][j+(grid_size-1)/2].himm_occ < 0  ||
+           world[i+(grid_size-1)/2][j+(grid_size-1)/2].prob_occ < float(0.5))){
           //marks position of goal on map
           int x_i, x_e, y_i, y_e = 0;
 
-          if((world[i+1][j+1].angle_pot > float(0.52) && world[i+1][j+1].angle_pot < float(1.04)) ||
-             (world[i+1][j+1].angle_pot > float(3.66) && world[i+1][j+1].angle_pot < float(4.19))){
-            //between 30 and 60 deg or 210 and 240
+          //painter
+          QPen pot_red, pot_blue;
+          pot_red.setBrush(Qt::green);
+          pot_blue.setBrush(Qt::blue);
+
+          //plots vector that is in the middle of the cell
+          //between 345 and 15 deg
+          if(world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot >= float(-0.26) &&
+             world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot < float(0.26)){
             x_i = i;
-            y_i = j+3;
-            x_e = i+3;
+            y_i = j+(grid_size-1)/2;
+            x_e = i+grid_size-1;
+            y_e = j+(grid_size-1)/2;
+            //add line
+            scene->addLine(x_i, y_i, x_e, y_e, pot_blue);
+
+            //add rect
+            scene->addRect(i+2,j+1,1,1,pot_red);
+          }
+          //between 15 and 60 deg
+          else if(world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot >= float(0.26) &&
+                  world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot < float(1.05)){
+            x_i = i;
+            y_i = j+(grid_size-1);
+            x_e = i+grid_size-1;
             y_e = j;
+            //add line
+            scene->addLine(x_i, y_i, x_e, y_e, pot_blue);
+
+            //add rect
+            scene->addRect(i+3,j,1,1,pot_red);
           }
-          //between 60 and 90
-          else if((world[i+1][j+1].angle_pot > float(1.04) && world[i+1][j+1].angle_pot < float(1.57)) ||
-                  (world[i+1][j+1].angle_pot > float(4.19) && world[i+1][j+1].angle_pot < float(4.71))){
-            x_i = i+1;
-            y_i = j+3;
-            x_e = i+2;
-            y_e = j+2;
+          //between 60 and 120 deg
+          else if(world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot >= float(1.05) &&
+                  world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot < float(2.09)){
+            x_i = i+(grid_size-1)/2;
+            y_i = j;
+            x_e = i+(grid_size-1)/2;
+            y_e = j+(grid_size-1);
+            //add line
+            scene->addLine(x_i, y_i, x_e, y_e, pot_blue);
+
+            //add rect
+            scene->addRect(i+1,j,1,1,pot_red);
           }
-          //between 0 and 30
-          else if((world[i+1][j+1].angle_pot > float(0.0) && world[i+1][j+1].angle_pot < float(0.52)) ||
-                  (world[i+1][j+1].angle_pot > float(1.57) && world[i+1][j+1].angle_pot < float(3.66))){
-            x_i = i;
-            y_i = j+2;
-            x_e = i+3;
-            y_e = j+1;
-          }
-          //between 0 and -30
-          else if((world[i+1][j+1].angle_pot > float(-0.52) && world[i+1][j+1].angle_pot < float(0.0)) ||
-                  (world[i+1][j+1].angle_pot > float(2.62) && world[i+1][j+1].angle_pot < float(3.14))){
-            x_i = i;
-            y_i = j+1;
-            x_e = i+3;
-            y_e = j+2;
-          }
-          //between -30 and -60
-          else if((world[i+1][j+1].angle_pot > float(-1.04) && world[i+1][j+1].angle_pot < float(-0.52)) ||
-                  (world[i+1][j+1].angle_pot > float(2.62) && world[i+1][j+1].angle_pot < float(1.92))){
+          //between 120 and 165 deg
+          else if(world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot >= float(2.09) &&
+                  world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot < float(2.88)){
             x_i = i;
             y_i = j;
-            x_e = i+3;
-            y_e = j+3;
+            x_e = i+(grid_size-1);
+            y_e = j+(grid_size-1);
+            //add line
+            scene->addLine(x_i, y_i, x_e, y_e, pot_blue);
+
+            //add rect
+            scene->addRect(i,j,1,1,pot_red);
           }
-          //between -60 and -90
-          else{
+          //between 165 and 195 deg
+          else if(world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot >= float(2.88) ||
+                  world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot < float(-2.88)){
             x_i = i;
-            y_i = j+1;
-            x_e = i+3;
-            y_e = j+2;
+            y_i = j+(grid_size-1)/2;
+            x_e = i+grid_size-1;
+            y_e = j+(grid_size-1)/2;
+            //add line
+            scene->addLine(x_i, y_i, x_e, y_e, pot_blue);
+
+            //add rect
+            scene->addRect(i,j+2,1,1,pot_red);
           }
+          //between 195 and 235 deg
+          else if(world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot >= float(-2.88) &&
+                  world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot < float(-2.18)){
+            x_i = i;
+            y_i = j+(grid_size-1);
+            x_e = i+(grid_size-1);
+            y_e = j;
+            //add line
+            scene->addLine(x_i, y_i, x_e, y_e, pot_blue);
 
-          //painter
-          QPen pot;
-          pot.setBrush(Qt::red);
+            //add rect
+            scene->addRect(i,j+3,1,1,pot_red);
+          }
+          //between 235 and 300 deg
+          else if(world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot >=float(-2.18) &&
+                  world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot < float(-1.05)){
+            x_i = i;
+            y_i = j;
+            x_e = i+(grid_size-1);
+            y_e = j+(grid_size-1);
+            //add line
+            scene->addLine(x_i, y_i, x_e, y_e, pot_blue);
 
-          //pot.addRegion(line_pot);
-          QGraphicsLineItem *pot_ = scene->addLine(x_i, y_i, x_e, y_e, pot);
-          //pot_->setBrush(QBrush("green"));
-          //pot_->setX(i+2);
-          //pot_->setY(j+2);
+            //add rect
+            scene->addRect(i+3,j+3,1,1,pot_red);
 
-          //add goal to scene
-          QPixmap mypot = QPixmapFromItem(pot_);
-          scene->addPixmap(mypot);
+          }
+          //between 300 and 345 deg
+          else if(world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot >= float(-1.05) &&
+                  world[i+(grid_size-1)/2][j+(grid_size-1)/2].angle_pot < float(-0.26)){
+            x_i = i;
+            y_i = j;
+            x_e = i+(grid_size-1);
+            y_e = j+(grid_size-1);
+            //add line
+            scene->addLine(x_i, y_i, x_e, y_e, pot_blue);
+
+            //add rect
+            scene->addRect(i+3,j+3,1,1,pot_red);
+          }
+          else{
+             x_i = 1;
+             x_e = 1;
+             y_i = 1;
+             y_e = 1;
+          }
         }
       }
     }
-    //field_calculated = false;
   }
-
 }
 
 //odometry and rotation function
@@ -590,7 +662,11 @@ void  RosMappingGUI::markOccupied(){
     }
   }
 
-  //calls method to calculate probabilty for each sensor
+  //calls method to calculate probability for each sensor
+//  boundingRect = x-r, x+r, y-r, y+r;
+//  for x
+//    for y
+
   for (int i = 0; i < 8; i++){
     if (btn_BAYES == 1 && btn_HIMM == 0){
       bayesProb(i);
@@ -629,7 +705,7 @@ std::pair<int, int> RosMappingGUI::convertCoord(double scale, double angle, doub
   return std::make_pair(x_new, y_new);
 }
 
-//BAYES PROBABILITY CALCULATOR
+//BAYES PROBABILITY Calculator
 void RosMappingGUI::bayesProb(int which_sonar){
   //only start execution if BAYES button is pressed
   if (btn_BAYES == 0 && btn_HIMM == 1) return;
@@ -757,13 +833,14 @@ void RosMappingGUI::bayesProb(int which_sonar){
   }
 };
 
-//HIMM probability CALCULATOR
+//HIMM probability Calculator
 void RosMappingGUI::HIMMProb(int which_sonar){
   //only start execution if HIMM button is pressed
   if (btn_BAYES == 1 && btn_HIMM == 0) return;
 
   //beta (maximum angle of sonar reading)
-  double beta = 0.174533;     //equivalent to 10 degrees
+  //double beta = 0.174533;     //equivalent to +-10 degrees
+  double beta = 0.0872665;      //equivalent to +-5  degrees
 
   //inverse angles of each sensor in radians relative to robot frame of reference
   double sonar_angles[8] = {-1.5708, -0.872665, -0.523599, -0.174533, 0.174533, 0.523599, 0.872665, 1.5708};
@@ -781,7 +858,7 @@ void RosMappingGUI::HIMMProb(int which_sonar){
 
   //calculate HIMM values
   //if the reading is valid
-  if(fabs(alpha) < beta){                                           //only gets values that are within cone of readings                                                          //only gets readings that are under 4 meters
+  if(fabs(alpha) < beta){                                  //only gets values that are within cone of readings                                                          //only gets readings that are under 4 meters
 
     //convert pair of coordinates to WORLD coordinates
     double yaw_2f = yaw_rot - sonar_angles[which_sonar];   //angle sonar to world
@@ -801,12 +878,12 @@ void RosMappingGUI::HIMMProb(int which_sonar){
       int radius = (j*grid_size) + (grid_size/2);
 
         //loop every degree in the cone of readings
-        for(int i = -10; i < 11; i++){
+        for(int i = -5; i < 6; i++){
 
           //iterate from middle to right (CW), then from middle to left (CCW)
           int res = 0;
-          if((i+10) < 11)      //0 1 2 3 4 5 6 7 8 9 10  -1 -2 -3 -4 -5 -6 -7 -8 -9 -10
-            res = i+10;
+          if((i+5) < 6)      //0 1 2 3 4 5 6 7 8 9 10 -1 -2 -3 -4 -5 -6 -7 -8 -9 -10
+            res = i+5;
           else
             res = -i;
 
@@ -816,28 +893,57 @@ void RosMappingGUI::HIMMProb(int which_sonar){
           //ang of reference for each iteration
           double ang_ref = yaw_2f + alpha_temp;
 
-          //std::cout << res << "ang ref " << res*3.1415/180 << "\n";
+          //get cell of reference coordinates
+          double x_rob = x_pos*scale_factor + img_side/2;
+          double y_rob = -y_pos*scale_factor + img_side/2;
+          double x_ref = (radius*cos(ang_ref))  + x_rob;
+          double y_ref = -(radius*sin(ang_ref)) + y_rob;
 
-          double x_ref = (radius*cos(ang_ref)) +  (x_pos*scale_factor + img_side/2);
-          double y_ref = -(radius*sin(ang_ref)) + (-y_pos*scale_factor + img_side/2);
-
+          //get point in the middle of grid cell that the robot is in
           int mid_x = int(floor(x_ref/grid_size)*grid_size  + grid_size/2);        //get the grid square boundaries that the
           int mid_y = int(floor(y_ref/grid_size)*grid_size + grid_size/2);         //get the grid square boundaries
 
-
-           //if readings are out of map's bounds
-          if(mid_x > 500 || mid_y > 500 || mid_x < 0 || mid_y < 0)
+          //if readings are out of map's bounds
+          if(mid_x > img_side || mid_y > img_side || mid_x < 0 || mid_y < 0)
             break;
 
           //previous value for prob occupied
           int previous_occ = world[mid_x][mid_y].himm_occ;
+
+          //structure to check whether to update cell or not
+          int update_sonar = 0;
+          double ang_cell = atan2(mid_y-y_rob, mid_x-x_rob)+yaw_rot;
+          if(ang_cell < sonar_angles[0])
+            update_sonar = 0;  //it is in sonar zero's region
+          else if(ang_cell > sonar_angles[7])
+            update_sonar = 7;   //it is in sonar seven's region
+          else{
+            if(ang_cell > sonar_angles[0] &&
+               ang_cell < sonar_angles[1])
+                update_sonar = 1;
+            else if(ang_cell > sonar_angles[1] &&
+                    ang_cell < sonar_angles[2])
+                update_sonar = 2;
+            else if(ang_cell > sonar_angles[2] &&
+                    ang_cell < sonar_angles[3])
+                update_sonar = 3;
+            else if(ang_cell > sonar_angles[3] &&
+                    ang_cell < sonar_angles[4])
+                update_sonar = 4;
+            else if(ang_cell > sonar_angles[4] &&
+                    ang_cell < sonar_angles[5])
+                update_sonar = 5;
+            else if(ang_cell > sonar_angles[5] &&
+                    ang_cell < sonar_angles[6])
+                update_sonar = 6;
+          }
 
           //boundary values
           //max = 15
           //min = -1
 
           //if the cell has not been visited yet
-          if (x_prev != mid_x && y_prev != mid_y){
+          if (x_prev != mid_x && y_prev != mid_y && which_sonar == update_sonar){
 
             //FREE
             if (radius < (r_world - grid_size) || r > 4.5){
@@ -877,10 +983,9 @@ void RosMappingGUI::calcHarmonicPot(){
   //if navigate button is not pressed or harmonic potentail was already calculated
   if(!ui->pbtn_NAV->isChecked() || pot_calculated) return;
 
-  //std::cout << "Calculating harmonic potential... \n";
+  int iterations = 1500; //number of iterations
 
-  int iterations = 30; //number of iterations
-
+  //set obstacles potential to 1
   for(int i = 0; i < img_side; i++){
     for(int j = 0; j < img_side; j++){
       //set obstacle potentials to 1
@@ -900,9 +1005,68 @@ void RosMappingGUI::calcHarmonicPot(){
     }
   }
 
+  //rpogress bar range
+  ui->progressBar->setRange(0,100);
+  int k10 = 0;
   //calculate harmonic potential
-  for(int k = 0; k < iterations; k++){
+  for(int k = 1; k < iterations+1; k++){
+    if(k%(iterations/100) == 0)
+      k10 += 1;
+      ui->progressBar->setValue(k10);
+
+    //from top left to bottom right
     for(int i = 1; i < img_side-1; i++){
+      for(int j = 1; j < img_side-1; j++){       //start at 1 to not read outside border
+        //old potentials
+        float old_left  = world[i-1][j].harm_pot;
+        float old_up    = world[i][j-1].harm_pot;
+        //new potentials
+        float new_right = world[i][j+1].harm_pot;
+        float new_down  = world[i+1][j].harm_pot;
+
+        //cell potential
+        //if it is not obstacle or goal
+        if(!world[i][j].obst_goal)
+          world[i][j].harm_pot = float(0.25)*(old_left + old_up + new_right + new_down);
+      }
+    }
+
+    //from bottom left to top right
+    for(int i = 1; i < img_side-1; i++){
+      for(int j = img_side-2; j > 2; j--){       //start at 1 to not read outside border
+        //old potentials
+        float old_left  = world[i-1][j].harm_pot;
+        float old_up    = world[i][j-1].harm_pot;
+        //new potentials
+        float new_right = world[i][j+1].harm_pot;
+        float new_down  = world[i+1][j].harm_pot;
+
+        //cell potential
+        //if it is not obstacle or goal
+        if(!world[i][j].obst_goal)
+          world[i][j].harm_pot = float(0.25)*(old_left + old_up + new_right + new_down);
+      }
+    }
+
+    //from bottom right to top left
+    for(int i = img_side-2; i > 1; i--){
+      for(int j = img_side-2; j > 1; j--){       //start at 1 to not read outside border
+        //old potentials
+        float old_left  = world[i-1][j].harm_pot;
+        float old_up    = world[i][j-1].harm_pot;
+        //new potentials
+        float new_right = world[i][j+1].harm_pot;
+        float new_down  = world[i+1][j].harm_pot;
+
+        //cell potential
+        //if it is not obstacle or goal
+        if(!world[i][j].obst_goal)
+          world[i][j].harm_pot = float(0.25)*(old_left + old_up + new_right + new_down);
+      }
+    }
+
+    //from top right to bottom left
+    for(int i = img_side-2; i > 1; i--){
       for(int j = 1; j < img_side-1; j++){       //start at 1 to not read outside border
         //old potentials
         float old_left  = world[i-1][j].harm_pot;
@@ -933,13 +1097,9 @@ void RosMappingGUI::calcHarmonicPot(){
       up    = world[i][j-1].harm_pot;
       down  = world[i][j+1].harm_pot;
 
-      float x_subgoal = left - right;
-      float y_subgoal = 0.0;
-
-      if(up > down)
-        y_subgoal = -(up - down);
-      else
-        y_subgoal = down - up;
+      //they are inverted or are they? --> ??
+      float x_subgoal = (left - right);
+      float y_subgoal = -(up - down);
 
       //find direction for robot to move
       world[i][j].angle_pot = atan2f(y_subgoal, x_subgoal);
@@ -947,42 +1107,8 @@ void RosMappingGUI::calcHarmonicPot(){
     }
   }
 
-  //find the mean of angles for each grid cell
-  float temp_angle = 0.0;
-  for(int i = 0; i < img_side; i+=grid_size){
-    for(int j = 0; j < img_side; j+=grid_size){
-      //coordinates of each cell
-      int lower_x = i;
-      int upper_x = lower_x + grid_size-1;
-      int lower_y = j;
-      int upper_y = lower_y + grid_size-1;
-
-      //find mean of grid cell
-      for(int k = lower_x; k < upper_x; k++){
-        for(int l = lower_y; l < upper_y; l++){
-          temp_angle += world[k][l].angle_pot;
-        }
-      }
-
-      //calculate mean
-      temp_angle = temp_angle / (grid_size*grid_size);
-
-      //attribute mean
-      for(int k = lower_x; k < upper_x; k++){
-        for(int l = lower_y; l < upper_y; l++){
-          world[k][l].angle_pot = temp_angle;
-        }
-      }
-
-      //reset
-      temp_angle = 0.0;
-    }
-  }
-
   //set variable to mark that harmonic potential was already calculated
   pot_calculated = true;
-
-  //std::cout << "Potential set! \n";
 
   //call map generator
   generateMap();
@@ -1000,9 +1126,11 @@ void RosMappingGUI::navGoal(){
     //new angle
 //    double new_angle = double(world[x_robot][y_robot].angle_pot);
     double new_angle = 0.0;
+    new_angle = double(world[x_robot][y_robot].angle_pot);
 
     /////////////////////////////////////////////////////////////////////////implement function to turn 45 deg if close to wall?
     //get mean angle
+    /*
     int ctr = 0;
     for(int i = x_robot-grid_size; i < x_robot+2*grid_size; i++){
       for(int j = y_robot-grid_size; j < y_robot+2*grid_size; j++){
@@ -1011,7 +1139,7 @@ void RosMappingGUI::navGoal(){
       }
     }
     new_angle = new_angle/ctr;
-
+*/
     //make turn to right angle
     double temp = fabs(new_angle - yaw_rot);
     if(new_angle > yaw_rot){
@@ -1027,7 +1155,7 @@ void RosMappingGUI::navGoal(){
       x_vel = 0.1;
     }
     else if(temp > 0.26 && temp < 0.78){
-      x_vel = 0.2;
+      x_vel = 0.25;
     }
     else{
       x_vel = 0.3;
