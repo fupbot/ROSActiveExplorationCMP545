@@ -1,7 +1,26 @@
 <launch>
-  <!-- launch the GUI -->
-  <node name="ros_mapping_gui_node" pkg="ros_mapping_gui" type="ros_mapping_gui_node" output="screen"/>
 
+  <arg name="urdf" default="$(find phir2framework)/description/urdf/p3dx.urdf.xacro" />
+  <param name="robot_description" command="$(find xacro)/xacro $(arg urdf)" />
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+
+<!-- ROSARIA -->
+<!--  para rodar em simulação   _port:=localhost -->
+<!--  para rodar com robô real  _port:=192.168.1.11:10002 -->
+
+  <node name="rosaria_phi" pkg="rosaria_phi" type="RosAria" output="screen" args="_sonar_frame:=front_sonar _publish_aria_lasers:=false _port:=192.168.1.11:10002"/>
+
+
+<!-- Visualizador -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find phir2framework)/p3dx.rviz" required="true" />
+
+  
+  <!-- launch the GUI 
+  <node name="ros_mapping_gui_node" pkg="ros_mapping_gui" type="ros_mapping_gui_node" output="screen"/>
+	-->
+  
   <!-- launch navigation package -->
-  <!- include file="/home/fup/catkin_ws/src/nav_pack/launch/nav_pack_launcher.launch"  -->
+  <!-- include file="/home/fup/catkin_ws/src/nav_pack/launch/nav_pack_launcher.launch"  -->
 </launch>

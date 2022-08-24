@@ -45,7 +45,7 @@ struct Obstacle {
 extern double x_pos;
 extern double y_pos;
 extern double yaw_rot;
-extern Obstacle world[500][500];  //world or map
+extern Obstacle world[800][800];  //world or map
 extern int img_side;              //side of image or scene - always square
 extern double scale_factor;
 extern int grid_size;

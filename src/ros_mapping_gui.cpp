@@ -1,4 +1,4 @@
-//v1.5 - semi-working navigation by harmonic potential field
+//v1.6 - real robot - Working navigation by harmonic potential field
 //@fupbot - Aug/22
 
 #include "ros_mapping_gui.h"
@@ -8,9 +8,9 @@
 double x_pos;                       //robot x coordinate
 double y_pos;                       //robot y coordinate
 double yaw_rot;                     //robot rotation angle
-int img_side = 500;                 //to alter img size, change here and on the declaration of world below
-Obstacle world[500][500]{};         //world definition
-double scale_factor = 20.0;         //scale factor
+int img_side = 800;                 //to alter img size, change here and on the declaration of world below
+Obstacle world[800][800]{};        //world definition
+double scale_factor = 30.0;         //scale factor
 int grid_size = 5;                  //square pixels of minimum grid size
 double sonar_readings[8][2]{};      //array to store sonar readings in the point cloud format - 8 (x,y) readings
 bool btn_BAYES = false;
@@ -30,15 +30,10 @@ RosMappingGUI::RosMappingGUI(QWidget *parent) :
   ui->setupUi(this);
 
   //buttons config
-  //QPushButton *pbtn_BAYES = new QPushButton(this);
   QObject::connect(ui->pbtn_BAYES, &QPushButton::clicked, this, &RosMappingGUI::onBayesButtonClicked);
-  //QPushButton *pbtn_HIMM = new QPushButton(this);
   QObject::connect(ui->pbtn_HIMM, &QPushButton::clicked, this, &RosMappingGUI::onHIMMButtonClicked);
-  //spinbox to set x coordinate of goal
   QObject::connect(ui->pbtn_GOAL, &QPushButton::clicked, this, &RosMappingGUI::onGoalButtonClicked);
-  //spinbox to set x coordinate of goal
   QObject::connect(ui->pbtn_NAV, &QPushButton::clicked, this, &RosMappingGUI::onNavButtonClicked);
-  //show field
   QObject::connect(ui->checkBox,  &QCheckBox::toggled, this, &RosMappingGUI::onFieldCheckboxClicked);
 
   //initialize world struct
@@ -61,17 +56,18 @@ RosMappingGUI::RosMappingGUI(QWidget *parent) :
   connect(ros_timer, SIGNAL(timeout()), this, SLOT(spinOnce()));
   ros_timer->start(100);  // set the rate to 1000ms
 
-  // setup subscriber
+  // setup subscriber for simulation
   std::string listen_pose, listen_sonar, pub_topic;
   nh_->param<std::string>("listen_topic",listen_pose,"/RosAria/pose");
   pose_sub_  = nh_->subscribe<nav_msgs::Odometry>(listen_pose, 1, &RosMappingGUI::posePosition, this);
   nh_->param<std::string>("listen_topic2", listen_sonar, "/RosAria/sonar");
   sonar_sub_ = nh_->subscribe<sensor_msgs::PointCloud>(listen_sonar, 1, &RosMappingGUI::sonarObstacles, this);
 
-  //setup publisher
+  //setup publisher for simulation
   std::string pose_topic;
   nh_->param<std::string>("pose_topic", pose_topic, "/RosAria/cmd_vel");
   pub_topic_ = nh_->advertise<geometry_msgs::Twist>(pose_topic,1);
+
 
   //GraphicsView config ---------------------------------
   scene = new QGraphicsScene(this);
@@ -509,6 +505,7 @@ void RosMappingGUI::posePosition(const nav_msgs::Odometry::ConstPtr &msg){
   //only start execution if one of the buttons is pressed
   if (btn_BAYES == 0 && btn_HIMM == 0) return;
 
+
   //set global variables
   x_pos = msg->pose.pose.position.x;
   y_pos = msg->pose.pose.position.y;
@@ -527,6 +524,7 @@ void RosMappingGUI::posePosition(const nav_msgs::Odometry::ConstPtr &msg){
 
 //sonar function
 void RosMappingGUI::sonarObstacles(const sensor_msgs::PointCloudConstPtr& son){
+
   //only start execution if one of the buttons is pressed
   if (btn_BAYES == 0 && btn_HIMM == 0) return;
 
@@ -550,7 +548,7 @@ void RosMappingGUI::sonarObstacles(const sensor_msgs::PointCloudConstPtr& son){
 void  RosMappingGUI::markOccupied(){
   //robot initialization offset is at the center of picture (0,0) becomes ((img_side/2),(img_side/2))
   //marks as occupied the cells whose probability is greater than 0.5
-  for (int i = 0; i < img_side; i++){                                //x coordinate of image
+  for (int i = 0; i < img_side; i++){                                 //x coordinate of image
     for (int j = 0; j < img_side; j++){                               //y coordinate of image
 
       //variables to mark the occupancy grid that contains the pixel
@@ -558,6 +556,17 @@ void  RosMappingGUI::markOccupied(){
       int upper_x = lower_x + grid_size;                      //occupied pixel is i
       int lower_y = int(floor(j/grid_size)*grid_size);        //get the grid square boundaries
       int upper_y = lower_y + grid_size;
+
+      //do not do anything if readings are out of bounds
+      if(lower_x < 0)
+        lower_x = 0;
+      if(lower_y < 0)
+        lower_y = 0;
+      if(upper_x > img_side-1)
+        upper_x = img_side-1;
+      if(upper_y > img_side-1)
+        upper_y = img_side-1;
+
 
       if(world[i][j].occupied == true){
         //bayes
@@ -594,7 +603,6 @@ void  RosMappingGUI::markOccupied(){
 
 
     //fill in the gaps
-
     for (int i = int(grid_size*1.5); i < int(img_side - grid_size*1.5); i+=grid_size){                //x coordinate of image
       for (int j = int(grid_size*1.5); j < int(img_side - grid_size*1.5); j+=grid_size){              //y coordinate of image
 
@@ -604,8 +612,17 @@ void  RosMappingGUI::markOccupied(){
       int prev_y = int(j - grid_size);              //get the grid square boundaries
       int post_y = int(j + grid_size);
 
+      //do not do anything if readings are out of bounds
+      if(prev_x < 0)
+        prev_x = 0;
+      if(prev_y < 0)
+        prev_y = 0;
+      if(post_x > img_side-1)
+        post_x = img_side-1;
+      if(post_y > img_side-1)
+        post_y = img_side-1;
+
       float mean_free = 0.0;
-      //float mean_free_himm = 0.0;
 
       if(world[i][j].occupied == 0){
 
@@ -663,9 +680,6 @@ void  RosMappingGUI::markOccupied(){
   }
 
   //calls method to calculate probability for each sensor
-//  boundingRect = x-r, x+r, y-r, y+r;
-//  for x
-//    for y
 
   for (int i = 0; i < 8; i++){
     if (btn_BAYES == 1 && btn_HIMM == 0){
@@ -840,7 +854,8 @@ void RosMappingGUI::HIMMProb(int which_sonar){
 
   //beta (maximum angle of sonar reading)
   //double beta = 0.174533;     //equivalent to +-10 degrees
-  double beta = 0.0872665;      //equivalent to +-5  degrees
+  double beta = 0.174533;      //equivalent to +-10  degrees
+  int sweep_angle = 10;
 
   //inverse angles of each sensor in radians relative to robot frame of reference
   double sonar_angles[8] = {-1.5708, -0.872665, -0.523599, -0.174533, 0.174533, 0.523599, 0.872665, 1.5708};
@@ -878,12 +893,12 @@ void RosMappingGUI::HIMMProb(int which_sonar){
       int radius = (j*grid_size) + (grid_size/2);
 
         //loop every degree in the cone of readings
-        for(int i = -5; i < 6; i++){
+        for(int i = -sweep_angle; i < sweep_angle+1; i++){
 
           //iterate from middle to right (CW), then from middle to left (CCW)
           int res = 0;
-          if((i+5) < 6)      //0 1 2 3 4 5 6 7 8 9 10 -1 -2 -3 -4 -5 -6 -7 -8 -9 -10
-            res = i+5;
+          if((i+sweep_angle) < sweep_angle+1)      //0 1 2 3 4 5 6 7 8 9 10 -1 -2 -3 -4 -5 -6 -7 -8 -9 -10
+            res = i + sweep_angle;
           else
             res = -i;
 
@@ -1124,22 +1139,11 @@ void RosMappingGUI::navGoal(){
     int y_robot = int(-y_pos*scale_factor + (img_side/2));
 
     //new angle
-//    double new_angle = double(world[x_robot][y_robot].angle_pot);
     double new_angle = 0.0;
     new_angle = double(world[x_robot][y_robot].angle_pot);
 
     /////////////////////////////////////////////////////////////////////////implement function to turn 45 deg if close to wall?
-    //get mean angle
-    /*
-    int ctr = 0;
-    for(int i = x_robot-grid_size; i < x_robot+2*grid_size; i++){
-      for(int j = y_robot-grid_size; j < y_robot+2*grid_size; j++){
-        new_angle += double(world[i][j].angle_pot);
-        ctr++;
-      }
-    }
-    new_angle = new_angle/ctr;
-*/
+
     //make turn to right angle
     double temp = fabs(new_angle - yaw_rot);
     if(new_angle > yaw_rot){
@@ -1155,10 +1159,10 @@ void RosMappingGUI::navGoal(){
       x_vel = 0.1;
     }
     else if(temp > 0.26 && temp < 0.78){
-      x_vel = 0.25;
+      x_vel = 0.15;
     }
     else{
-      x_vel = 0.3;
+      x_vel = 0.2;
     }
 
    //give commands to move towards subgoals
