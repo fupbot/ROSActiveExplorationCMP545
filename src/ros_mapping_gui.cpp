@@ -10,7 +10,7 @@ double y_pos;                       //robot y coordinate
 double yaw_rot;                     //robot rotation angle
 int img_side = 800;                 //to alter img size, change here and on the declaration of world below
 Obstacle world[800][800]{};        //world definition
-double scale_factor = 30.0;         //scale factor
+double scale_factor = 40.0;         //scale factor
 int grid_size = 5;                  //square pixels of minimum grid size
 double sonar_readings[8][2]{};      //array to store sonar readings in the point cloud format - 8 (x,y) readings
 bool btn_BAYES = false;
@@ -72,6 +72,10 @@ RosMappingGUI::RosMappingGUI(QWidget *parent) :
   //GraphicsView config ---------------------------------
   scene = new QGraphicsScene(this);
   ui->mapa->setScene(scene);
+
+  //set values for goal
+  ui->sb_setX->setValue(400);
+  ui->sb_setY->setValue(400);
 }
 
 RosMappingGUI::~RosMappingGUI()
@@ -124,7 +128,24 @@ void RosMappingGUI::onHIMMButtonClicked(){
 //function to set (x,y) navigation goal
 void RosMappingGUI::onGoalButtonClicked(){
   btn_GOAL = 1;
+
+  //resets field and related variables
+  if(pot_calculated){
+    //initialize world struct
+    for (int i=0;i<img_side;++i) {                          //iterate x
+      for (int j=0;j<img_side;++j) {                        //iterate y
+        world[i][j].harm_pot = 0.0;
+        world[i][j].obst_goal = 0;
+        world[i][j].angle_pot = 0.0;
+      }
+    }
+    pot_calculated = false;
+  }
+
   field_calculated = false;
+  ui->progressBar->setValue(0);
+
+  //get value of goal coordinates
   goal.first  = ui->sb_setX->value();
   goal.second = ui->sb_setY->value();
 };
@@ -141,13 +162,16 @@ void RosMappingGUI::onNavButtonClicked(){
   int y_robot = int(-y_pos*scale_factor + (img_side/2));
 
   //if robot is not at goal position
-  if (!(x_robot > goal.first  - 3*grid_size &&
-        x_robot < goal.first  + 3*grid_size &&
-        y_robot > goal.second - 3*grid_size &&
-        y_robot < goal.second + 3*grid_size)){
+  if (!(x_robot > goal.first  - 4*grid_size &&
+        x_robot < goal.first  + 4*grid_size &&
+        y_robot > goal.second - 4*grid_size &&
+        y_robot < goal.second + 4*grid_size)){
 
     //call navigation function
       navGoal();
+  }
+  else{
+    ui->pbtn_NAV->setChecked(false);
   }
 }
 
