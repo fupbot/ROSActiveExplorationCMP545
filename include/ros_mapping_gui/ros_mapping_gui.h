@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QSpinBox>
+#include <QDoubleSpinBox>
 #include <QtGui>
 #include <QDialog>
 #include <QGraphicsScene>
@@ -12,6 +13,8 @@
 #include <QGraphicsPixmapItem>
 #include <QGraphicsPathItem>
 #include <QProgressBar>
+#include <QCursor>
+#include <QMouseEvent>
 #include <QCheckBox>
 #include <QHBoxLayout>
 #include <QListWidget>
@@ -37,6 +40,8 @@ struct Obstacle {
   int himm_occ;       //himm occupation probability
   bool occupied;      //whether it is occupied or not
   bool obst_goal;     //if it is goal or obstacle, do not change potential
+  bool path_cell;     //to determine whether it is a cell that was in the path of robot
+  bool unused_var;    //just to keep off the annoying padding warning
   float harm_pot;     //harmonic potential
   float angle_pot;    //angle to plot field
 };
@@ -57,6 +62,12 @@ extern std::pair<int,int> goal;
 extern bool pot_calculated;
 extern bool field_calculated;
 extern bool show_field;
+extern bool btn_GS;
+extern bool btn_SOR;
+extern bool sensors_on_off;
+extern bool goal_cross_mov;
+extern bool first_movement;
+extern bool exp_goal_reached;
 
 //namespace
 namespace Ui {
@@ -77,12 +88,13 @@ public:
   std::pair<int, int> convertCoord(double scale, double angle, double trans_x, double trans_y, double x, double y);
   void calcHarmonicPot();
   void navGoal();
+  void exploreWorld();
   const double ROBOT_FOOTPRINT_RADIUS = 0.40;
   const double ROBOT_SONAR_ERROR      = 0.05;
 
   //print map on the scene
   void generateMap();
-  ~RosMappingGUI();
+  ~RosMappingGUI() override;
 
 public slots:
   void spinOnce();
@@ -90,7 +102,15 @@ public slots:
   void onHIMMButtonClicked();
   void onGoalButtonClicked();
   void onNavButtonClicked();
+  void onGOButtonClicked();
   void onFieldCheckboxClicked();
+  void onGSButtonClicked();
+  void onSORButtonClicked();
+  void onEXPButtonClicked();
+  void onTrajectoryCheckboxClicked();
+
+protected:
+  void mousePressEvent(QMouseEvent *event) override;
 
 private:
   Ui::RosMappingGUI *ui;
@@ -103,20 +123,23 @@ private:
   ros::Publisher  pub_topic_;
 
   //scene variables
-  QGraphicsScene *scene;
-  QGraphicsRectItem *rectangle;
-  QGraphicsEllipseItem *ellipse;
-  QGraphicsPixmapItem *arrow;
-  QGraphicsPolygonItem *triangle;
+  QGraphicsScene       *scene;
+  //QGraphicsRectItem    *rectangle;
+  //QGraphicsEllipseItem *ellipse;
+  //QGraphicsPixmapItem  *arrow;
+  QPolygonF            *Triangle;
+  QGraphicsPathItem    *block;
+  QPolygonF            *Goal_Cross;
+  QGraphicsPathItem    *cross;
 
-  //button variables
-  QPushButton *pbtn_BAYES;
-  QPushButton *pbtn_HIMM;
-  QCheckBox   *checkBox;
+  //button variabless
+  QPushButton  *pbtn_BAYES;
+  QPushButton  *pbtn_HIMM;
+  QCheckBox    *checkBox;
   QProgressBar *progressBar;
 
   //map image
-  QImage *map;
+  QImage *map_img;
 };
 
 #endif // ROS_MAPPING_GUI_H

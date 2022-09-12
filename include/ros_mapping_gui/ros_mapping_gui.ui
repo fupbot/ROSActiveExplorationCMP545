@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>982</width>
-    <height>843</height>
+    <width>1006</width>
+    <height>857</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -27,8 +27,8 @@
     <rect>
      <x>160</x>
      <y>20</y>
-     <width>802</width>
-     <height>802</height>
+     <width>821</width>
+     <height>821</height>
     </rect>
    </property>
    <property name="minimumSize">
@@ -42,9 +42,9 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>640</y>
+     <y>690</y>
      <width>101</width>
-     <height>181</height>
+     <height>158</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -73,6 +73,7 @@
         <family>Ubuntu</family>
         <pointsize>12</pointsize>
         <weight>50</weight>
+        <italic>true</italic>
         <bold>false</bold>
        </font>
       </property>
@@ -109,6 +110,7 @@
         <family>Ubuntu</family>
         <pointsize>12</pointsize>
         <weight>50</weight>
+        <italic>true</italic>
         <bold>false</bold>
        </font>
       </property>
@@ -145,6 +147,7 @@
         <family>Ubuntu</family>
         <pointsize>12</pointsize>
         <weight>50</weight>
+        <italic>true</italic>
         <bold>false</bold>
        </font>
       </property>
@@ -158,17 +161,22 @@
     </item>
    </layout>
   </widget>
-  <widget class="QPushButton" name="pbtn_NAV">
+  <widget class="QPushButton" name="pbtn_GO">
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>300</y>
+     <y>590</y>
      <width>101</width>
-     <height>30</height>
+     <height>41</height>
     </rect>
    </property>
+   <property name="font">
+    <font>
+     <pointsize>16</pointsize>
+    </font>
+   </property>
    <property name="text">
-    <string>Navigate!</string>
+    <string>GO!</string>
    </property>
    <property name="checkable">
     <bool>true</bool>
@@ -180,9 +188,9 @@
   <widget class="QLabel" name="lbl_x_2">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>120</y>
-     <width>99</width>
+     <x>20</x>
+     <y>270</y>
+     <width>121</width>
      <height>23</height>
     </rect>
    </property>
@@ -205,7 +213,7 @@
    <property name="geometry">
     <rect>
      <x>40</x>
-     <y>180</y>
+     <y>330</y>
      <width>16</width>
      <height>23</height>
     </rect>
@@ -226,13 +234,13 @@
    <property name="geometry">
     <rect>
      <x>60</x>
-     <y>180</y>
+     <y>330</y>
      <width>71</width>
      <height>21</height>
     </rect>
    </property>
    <property name="maximum">
-    <number>499</number>
+    <number>799</number>
    </property>
    <property name="singleStep">
     <number>10</number>
@@ -242,13 +250,13 @@
    <property name="geometry">
     <rect>
      <x>60</x>
-     <y>150</y>
+     <y>300</y>
      <width>71</width>
      <height>21</height>
     </rect>
    </property>
    <property name="maximum">
-    <number>499</number>
+    <number>799</number>
    </property>
    <property name="singleStep">
     <number>10</number>
@@ -258,7 +266,7 @@
    <property name="geometry">
     <rect>
      <x>40</x>
-     <y>150</y>
+     <y>300</y>
      <width>16</width>
      <height>23</height>
     </rect>
@@ -279,13 +287,13 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>210</y>
+     <y>360</y>
      <width>101</width>
-     <height>21</height>
+     <height>25</height>
     </rect>
    </property>
    <property name="text">
-    <string>setGoal</string>
+    <string> Goal/Reset</string>
    </property>
    <property name="checkable">
     <bool>false</bool>
@@ -294,21 +302,21 @@
   <widget class="QCheckBox" name="checkBox">
    <property name="geometry">
     <rect>
-     <x>40</x>
-     <y>240</y>
-     <width>94</width>
+     <x>30</x>
+     <y>640</y>
+     <width>101</width>
      <height>28</height>
     </rect>
    </property>
    <property name="text">
-    <string>Pot. Field</string>
+    <string extracomment="4">Pot. Field</string>
    </property>
   </widget>
   <widget class="QProgressBar" name="progressBar">
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>270</y>
+     <y>560</y>
      <width>118</width>
      <height>16</height>
     </rect>
@@ -321,7 +329,7 @@
    <property name="geometry">
     <rect>
      <x>40</x>
-     <y>20</y>
+     <y>70</y>
      <width>80</width>
      <height>23</height>
     </rect>
@@ -345,7 +353,7 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>50</y>
+     <y>100</y>
      <width>101</width>
      <height>25</height>
     </rect>
@@ -364,7 +372,7 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>80</y>
+     <y>130</y>
      <width>101</width>
      <height>25</height>
     </rect>
@@ -377,6 +385,319 @@
    </property>
    <property name="flat">
     <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pbtn_GS">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>430</y>
+     <width>101</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>GaussSeidel</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pbtn_SOR">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>460</y>
+     <width>101</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>SOR</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QDoubleSpinBox" name="sp_setSOR">
+   <property name="geometry">
+    <rect>
+     <x>60</x>
+     <y>500</y>
+     <width>70</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="minimum">
+    <double>-1.000000000000000</double>
+   </property>
+   <property name="maximum">
+    <double>1.000000000000000</double>
+   </property>
+   <property name="singleStep">
+    <double>0.010000000000000</double>
+   </property>
+   <property name="value">
+    <double>0.010000000000000</double>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lbl_y_2">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>490</y>
+     <width>21</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Ubuntu</family>
+     <pointsize>17</pointsize>
+     <weight>50</weight>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>ε</string>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="sp_iter">
+   <property name="geometry">
+    <rect>
+     <x>60</x>
+     <y>530</y>
+     <width>71</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="maximum">
+    <number>5000</number>
+   </property>
+   <property name="singleStep">
+    <number>10</number>
+   </property>
+   <property name="value">
+    <number>30</number>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lbl_y_3">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>530</y>
+     <width>31</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Ubuntu</family>
+     <pointsize>12</pointsize>
+     <weight>50</weight>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>Iter.</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lbl_x_11">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>400</y>
+     <width>101</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Ubuntu</family>
+     <pointsize>15</pointsize>
+     <weight>50</weight>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>Method</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lbl_x_10">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>170</y>
+     <width>101</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Ubuntu</family>
+     <pointsize>15</pointsize>
+     <weight>50</weight>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>Mode</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pbtn_EXP">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>200</y>
+     <width>101</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Explore</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pbtn_NAV">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>230</y>
+     <width>101</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Navigate</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lbl_msgs">
+   <property name="geometry">
+    <rect>
+     <x>180</x>
+     <y>810</y>
+     <width>441</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Ubuntu</family>
+     <pointsize>10</pointsize>
+    </font>
+   </property>
+   <property name="autoFillBackground">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="wordWrap">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="cb_trajectory">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>660</y>
+     <width>101</width>
+     <height>28</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string extracomment="4">Trajectory</string>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="sb_scale">
+   <property name="geometry">
+    <rect>
+     <x>80</x>
+     <y>20</y>
+     <width>51</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="maximum">
+    <number>799</number>
+   </property>
+   <property name="singleStep">
+    <number>1</number>
+   </property>
+   <property name="value">
+    <number>20</number>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lbl_y_4">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>20</y>
+     <width>41</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Ubuntu</family>
+     <pointsize>12</pointsize>
+     <weight>50</weight>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>Scale</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lbl_y_5">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>40</y>
+     <width>41</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Ubuntu</family>
+     <pointsize>12</pointsize>
+     <weight>50</weight>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>Cell</string>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="sb_cell">
+   <property name="geometry">
+    <rect>
+     <x>80</x>
+     <y>40</y>
+     <width>51</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="maximum">
+    <number>799</number>
+   </property>
+   <property name="singleStep">
+    <number>1</number>
+   </property>
+   <property name="value">
+    <number>5</number>
    </property>
   </widget>
  </widget>
