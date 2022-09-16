@@ -6,14 +6,16 @@ v1.2 - Improved rendering of occupancy grid. <br>
 v1.3 - Partially working BAYES and HIMM methods. <br>
 v1.4 - Working BAYES and HIMM obstacle detection methods. <br>
 
-![v1.4 - Bayes_HIMM](https://github.com/fupbot/Simple_ROS_mapper/blob/main/media/bayes_vs_himm.png =300x366) 
+<img src="https://github.com/fupbot/Simple_ROS_mapper/blob/main/media/bayes_vs_himm.png" width="500">
 
 <br>
 v1.5 - (Almost) working version of Harmonic Field navigation. <br>
 v1.6 - Working harmonic fields. <br>
 v1.7 - Working exploration mode. <br>
 
-![v1.7 - Exploration](https://github.com/fupbot/Simple_ROS_mapper/blob/main/media/exp_v1_7.png =300x574) <br>
+<img src="https://github.com/fupbot/Simple_ROS_mapper/blob/main/media/exp_v1_7.png" width="500">
+<br>
 
 v1.8 - Improved exploration mode with local activation window. <br>
+
 
