@@ -15,3 +15,5 @@ v1.7 - Working exploration mode. <br>
 
 ![v1.7 - Exploration](https://github.com/fupbot/Simple_ROS_mapper/blob/main/media/exp_v1_7.png =300x574) <br>
 
+v1.8 - Improved exploration mode with local activation window. <br>
+

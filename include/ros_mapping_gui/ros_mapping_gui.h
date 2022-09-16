@@ -42,8 +42,8 @@ struct Obstacle {
   bool obst_goal;     //if it is goal or obstacle, do not change potential
   bool path_cell;     //to determine whether it is a cell that was in the path of robot
   bool unused_var;    //just to keep off the annoying padding warning
-  float harm_pot;     //harmonic potential
   float angle_pot;    //angle to plot field
+  double harm_pot;     //harmonic potential
 };
 
 //global variables and general program parameters
@@ -68,6 +68,7 @@ extern bool sensors_on_off;
 extern bool goal_cross_mov;
 extern bool first_movement;
 extern bool exp_goal_reached;
+extern int factor_repeat;
 
 //namespace
 namespace Ui {
