@@ -69,6 +69,10 @@ extern bool goal_cross_mov;
 extern bool first_movement;
 extern bool exp_goal_reached;
 extern int factor_repeat;
+extern int  last_x;
+extern int  last_y;
+extern float travel_dist;
+extern double radius_min;
 
 //namespace
 namespace Ui {

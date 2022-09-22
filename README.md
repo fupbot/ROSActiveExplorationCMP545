@@ -17,5 +17,6 @@ v1.7 - Working exploration mode. <br>
 <br>
 
 v1.8 - Improved exploration mode with local activation window. <br>
+v1.9 - Improved navigation. Pending vector speed control <br>
 
 

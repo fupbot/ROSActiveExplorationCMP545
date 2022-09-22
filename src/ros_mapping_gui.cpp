@@ -26,6 +26,10 @@ bool goal_cross_mov   = false;
 bool first_movement   = true;
 bool exp_goal_reached = false;
 int  factor_repeat = 1;
+int  last_x = 400;
+int  last_y = 400;
+float travel_dist = 0.0;
+double radius_min = 1.0;
 std::pair<int,int> goal = std::make_pair (0,0); //goal for navigation
 
 //---------------------------------------------------------------------------------------
@@ -377,6 +381,17 @@ void RosMappingGUI::generateMap(){
            value = QColor("lightGray").rgba();
            map_img->setPixel(i, j, value);
          }
+
+        //print where goal should be
+//        if(world[i][j].harm_pot > -0.1 && world[i][j].harm_pot < 0.00000000000001 && world[i][j].occupied == 1){
+//          value = QColor("green").rgba();
+//          map_img->setPixel(i, j, value);
+//        }
+
+//        if(world[i][j].unused_var == true){
+//          value = QColor("lightGreen").rgba();
+//          map_img->setPixel(i, j, value);
+//        }
       }
     }
   }
@@ -447,8 +462,8 @@ void RosMappingGUI::generateMap(){
 
           //painter
           QPen pot_red, pot_blue;
-          pot_red.setBrush(Qt::green);
-          pot_blue.setBrush(Qt::blue);
+          pot_red.setBrush(Qt::gray);
+          pot_blue.setBrush(Qt::lightGray);
 
           //plots vector that is in the middle of the cell
           //between 345 and 15 deg
@@ -980,6 +995,7 @@ void RosMappingGUI::bayesProb(int which_sonar){
 void RosMappingGUI::HIMMProb(int which_sonar){
   //only start execution if HIMM button is pressed
   if (btn_BAYES == 1 && btn_HIMM == 0) return;
+  //if (sqrt(pow(sonar_readings[which_sonar][0],2) + pow(sonar_readings[which_sonar][1],2)) > radius_min) return;
 
   //beta (maximum angle of sonar reading)
   //double beta = 0.174533;     //equivalent to +-10 degrees
@@ -1126,32 +1142,14 @@ void RosMappingGUI::HIMMProb(int which_sonar){
 void RosMappingGUI::calcHarmonicPot(){
   //if navigate button is not pressed or harmonic potentail was already calculated
   //if(!ui->pbtn_NAV->isChecked() || !ui->pbtn_EXP->isChecked() || pot_calculated) return;
-  if(factor_repeat%4 != 0) return;
+  if(factor_repeat%2 != 0) return;
 
   int iterations = ui->sp_iter->value(); //number of iterations
+  bool any_obstacle = false;
 
-  //get bounding box coordinates of explored world so far
-  int x_low  = img_side-1;
-  int y_low  = img_side-1;
-  int x_high = 0;
-  int y_high = 0;
-
-  //set obstacles potential to 1
-  for(int i = 0; i < img_side; i++){
-    for(int j = 0; j < img_side; j++){
-      //set global bounding box coordinates
-      if(world[i][j].occupied){
-        if(i < x_low)
-          x_low = i;
-        if(j < y_low)
-          y_low = j;
-        if(i > x_high)
-          x_high = i;
-        if(j > y_high)
-          y_high = j;
-      }
-    }
-  }
+  //global robot coordinates
+  int x_robot = int(x_pos*scale_factor + (img_side/2));
+  int y_robot = int(-y_pos*scale_factor + (img_side/2));
 
   //find average of three smallest readings
   double dist[8];
@@ -1165,12 +1163,41 @@ void RosMappingGUI::calcHarmonicPot(){
   }
   //radius of activation window
   double radius = temp_sum/3;
-  if(radius < 0.3)             //minimum radius value of 30cm
-    radius = 0.3;
-  std::cout << "Radius :" << radius << "\n";
+  if(radius < 0.5)             //minimum radius value of 30cm
+    radius = 0.5;
+  //std::cout << "Radius :" << radius << "\n";
+  radius_min = radius;
 
   //convert radius to global scale
   int radius_int = int(radius*scale_factor);
+
+
+  //get bounding box coordinates of explored world so far
+  int x_low  = img_side-1;
+  int y_low  = img_side-1;
+  int x_high = 0;
+  int y_high = 0;
+
+  //set obstacles potential to 1
+  for(int i = 0; i < img_side; i++){
+    for(int j = 0; j < img_side; j++){
+      //set global bounding box coordinates
+      if(world[i][j].occupied && sqrt(pow(x_robot - i,2) + pow(y_robot - j,2)) < radius_int){
+        if(i < x_low)
+          x_low = i;
+        if(j < y_low)
+          y_low = j;
+        if(i > x_high)
+          x_high = i;
+        if(j > y_high)
+          y_high = j;
+      }
+
+      if(world[i][j].himm_occ > 0)
+        any_obstacle = true;
+    }
+  }
+
 
   //create local bounding box for robot's surroundings
   //get bounding box coordinates of explored world so far
@@ -1179,9 +1206,11 @@ void RosMappingGUI::calcHarmonicPot(){
   int x_high_local = 0;
   int y_high_local = 0;
 
-  //global robot coordinates
-  int x_robot = int(x_pos*scale_factor + (img_side/2));
-  int y_robot = int(-y_pos*scale_factor + (img_side/2));
+  travel_dist += float(sqrt(pow(x_robot-last_x,2) + pow(y_robot-last_y,2)));
+  ui->lbl_msgs_2->setText(QString(" Travel dist: %1 m").arg(double(travel_dist)/scale_factor));
+
+  last_x = x_robot;
+  last_y = y_robot;
 
   for(int i = x_robot-radius_int; i < x_robot+radius_int; i++){
     for(int j = y_robot-radius_int; j < y_robot+radius_int; j++){
@@ -1193,6 +1222,13 @@ void RosMappingGUI::calcHarmonicPot(){
         x_high_local = i;
       if(j > y_high_local)
         y_high_local = j;
+
+      world[i][j].unused_var = true;
+
+      //reset field
+//      world[i][j].harm_pot  = 0.0;
+//      world[i][j].obst_goal = 0;
+//      world[i][j].angle_pot = 0.0;
     }
   }
 
@@ -1200,16 +1236,29 @@ void RosMappingGUI::calcHarmonicPot(){
   bool is_local_enough = false;
   for(int i = x_robot-radius_int; i < x_robot+radius_int; i++){
     for(int j = y_robot-radius_int; j < y_robot+radius_int; j++){
-      if(world[i][j].himm_occ == 0) //if there any unvisited cells yet
+      if(world[i][j].himm_occ == 0 && !ui->pbtn_NAV->isChecked()) //if there any unvisited cells yet
         is_local_enough = true;
+        ui->lbl_msgs->setText(QString(" Local Window"));
     }
   }
 
+
   if(is_local_enough == false){
+    ui->lbl_msgs->setText(QString(" Global Window"));
     x_low_local  = x_low;
     x_high_local = x_high;
     y_low_local  = y_low;
     y_high_local = x_high;
+
+//    //initialize world struct
+//    for (int i=0;i<img_side;++i) {                          //iterate x
+//      for (int j=0;j<img_side;++j) {                        //iterate y
+//        world[i][j].harm_pot  = 0.0;
+//        world[i][j].obst_goal = 0;
+//        world[i][j].angle_pot = 0.0;
+//      }
+//    }
+
   }
 
   //set goal potential to 0
@@ -1259,10 +1308,25 @@ void RosMappingGUI::calcHarmonicPot(){
     for(int i = x_low_local; i < x_high_local; i++){
       for(int j = y_low_local; j < y_high_local; j++){
         //set obstacle potentials to 1
-        if(world[i][j].himm_occ > 0){
-          world[i][j].harm_pot = 1.0;
-          world[i][j].obst_goal = true;               //variable to keep obstacles' potential unchanged
-        }
+         if(ui->cb_wall->isChecked() && any_obstacle){
+           if(world[i][j].himm_occ > 0){
+             world[i][j].harm_pot = 1.0;
+             world[i][j].obst_goal = true;               //variable to keep obstacles' potential unchanged
+           }
+         }
+         else{
+           if(world[i][j].himm_occ > 0){
+             world[i][j].harm_pot = 1.0;
+             world[i][j].obst_goal = true;               //variable to keep obstacles' potential unchanged
+           }
+         }
+
+
+        //variables to mark the occupancy grid that contains the pixel
+//        int low_x = int(floor(i/grid_size)*grid_size);        //get the grid square boundaries that the
+//        int mid_x = low_x + (grid_size/2);                    //occupied pixel is i
+//        int low_y = int(floor(j/grid_size)*grid_size);        //get the grid square boundaries
+//        int mid_y = low_y + (grid_size/2);
 
         //set goals
         //check if it an unvisited cell
@@ -1272,10 +1336,45 @@ void RosMappingGUI::calcHarmonicPot(){
               world[i+1][j].himm_occ == 0 ||
               world[i][j-1].himm_occ == 0 ||
               world[i][j+1].himm_occ == 0){
+             //check whether it is next to a obstacle cell    -- wall follow
+             if(ui->cb_wall->isChecked()){
+              if(world[i-1][j].himm_occ > 0 ||
+                 world[i+1][j].himm_occ > 0 ||
+                 world[i][j-1].himm_occ > 0 ||
+                 world[i][j+1].himm_occ > 0){
              world[i][j].harm_pot = 0.0;
              world[i][j].obst_goal = false;
+              }
+             }
+             else{
+               world[i][j].harm_pot = 0.0;
+               world[i][j].obst_goal = false;
+             }
            }
         }
+//        if(world[i][j].himm_occ == 0 && sqrt(pow(x_robot - i,2) + pow(y_robot - j,2)) < radius){
+//          //check whether it is next to a visited cell
+//           if(world[mid_x-grid_size][mid_y].himm_occ == -1 ||
+//              world[mid_x+grid_size][mid_y].himm_occ == -1 ||
+//              world[mid_x][mid_y-grid_size].himm_occ == -1 ||
+//              world[mid_x][mid_y+grid_size].himm_occ == -1 ){
+//             //check whether it is next to a obstacle cell    -- wall follow
+//             if(ui->cb_wall->isChecked()){
+//              if(world[mid_x-grid_size][mid_y].himm_occ > 0 ||
+//                 world[mid_x+grid_size][mid_y].himm_occ > 0 ||
+//                 world[mid_x][mid_y-grid_size].himm_occ > 0 ||
+//                 world[mid_x][mid_y+grid_size].himm_occ > 0 ){
+//                  world[i][j].harm_pot = 0.0;
+//                  world[i][j].obst_goal = false;
+//                }
+//               else{}
+//             }
+//             else{
+//               world[i][j].harm_pot = 0.0;
+//               world[i][j].obst_goal = false;
+//             }
+//           }
+//        }
       }
     }
   }
@@ -1435,21 +1534,21 @@ void RosMappingGUI::calcHarmonicPot(){
       }
 
       //from top left to bottom right (column first)
-      for(int j = y_low_local; j < y_high_local; j++){       //uses coordinates of bounding box that was previously calculated
-         for(int i = x_low_local; i < x_high_local; i++){
-          //old potentials
-          double old_left  = world[i-1][j].harm_pot;
-          double old_up    = world[i][j-1].harm_pot;
-          //new potentials
-          double new_right = world[i][j+1].harm_pot;
-          double new_down  = world[i+1][j].harm_pot;
+//      for(int j = y_low_local; j < y_high_local; j++){       //uses coordinates of bounding box that was previously calculated
+//         for(int i = x_low_local; i < x_high_local; i++){
+//          //old potentials
+//          double old_left  = world[i-1][j].harm_pot;
+//          double old_up    = world[i][j-1].harm_pot;
+//          //new potentials
+//          double new_right = world[i][j+1].harm_pot;
+//          double new_down  = world[i+1][j].harm_pot;
 
-          //cell potential
-          //if it is not obstacle or goal
-          if(!world[i][j].obst_goal)
-            world[i][j].harm_pot = 0.25*(old_left + old_up + new_right + new_down);
-        }
-      }
+//          //cell potential
+//          //if it is not obstacle or goal
+//          if(!world[i][j].obst_goal)
+//            world[i][j].harm_pot = 0.25*(old_left + old_up + new_right + new_down);
+//        }
+//      }
 
       //from bottom left to top right
       for(int i = x_low_local; i < x_high_local; i++){
@@ -1486,21 +1585,21 @@ void RosMappingGUI::calcHarmonicPot(){
       }
 
       //from bottom right to top left (column first)
-      for(int j = y_high_local; j > y_low_local; j--){       //start at 1 to not read outside border
-        for(int i = x_high_local; i > x_low_local; i--){
-          //old potentials
-          double old_left  = world[i-1][j].harm_pot;
-          double old_up    = world[i][j-1].harm_pot;
-          //new potentials
-          double new_right = world[i][j+1].harm_pot;
-          double new_down  = world[i+1][j].harm_pot;
+//      for(int j = y_high_local; j > y_low_local; j--){       //start at 1 to not read outside border
+//        for(int i = x_high_local; i > x_low_local; i--){
+//          //old potentials
+//          double old_left  = world[i-1][j].harm_pot;
+//          double old_up    = world[i][j-1].harm_pot;
+//          //new potentials
+//          double new_right = world[i][j+1].harm_pot;
+//          double new_down  = world[i+1][j].harm_pot;
 
-          //cell potential
-          //if it is not obstacle or goal
-          if(!world[i][j].obst_goal)
-            world[i][j].harm_pot = 0.25*(old_left + old_up + new_right + new_down);
-        }
-      }
+//          //cell potential
+//          //if it is not obstacle or goal
+//          if(!world[i][j].obst_goal)
+//            world[i][j].harm_pot = 0.25*(old_left + old_up + new_right + new_down);
+//        }
+//      }
 
       //from top right to bottom left
       for(int i = x_high_local; i > x_low_local; i--){
@@ -1605,34 +1704,36 @@ void RosMappingGUI::calcHarmonicPot(){
   }
 
   //calculate angle of heading to plot on map
-  for(int i = x_low; i < x_high; i++){
-    for(int j = y_low; j < y_high; j++){
+  if(factor_repeat%20 == 0) {
+    for(int i = x_low; i < x_high; i++){
+      for(int j = y_low; j < y_high; j++){
 
-      ///define four quadrants
-      //x+ y+
-      //if((world[i-1][j].harm_pot - world[i+1][j].harm_pot)  )
-      double left, right, up, down = 0.0;
-//      left  = world[i-1][j].harm_pot;
-//      right = world[i+1][j].harm_pot;
-//      up    = world[i][j-1].harm_pot;
-//      down  = world[i][j+1].harm_pot;
-      left  = world[i-grid_size][j].harm_pot;
-      right = world[i+grid_size][j].harm_pot;
-      up    = world[i][j-grid_size].harm_pot;
-      down  = world[i][j+grid_size].harm_pot;
+        ///define four quadrants
+        //x+ y+
+        //if((world[i-1][j].harm_pot - world[i+1][j].harm_pot)  )
+        double left, right, up, down = 0.0;
+        left  = world[i-1][j].harm_pot;
+        right = world[i+1][j].harm_pot;
+        up    = world[i][j-1].harm_pot;
+        down  = world[i][j+1].harm_pot;
+        //      left  = world[i-2*grid_size][j].harm_pot;
+        //      right = world[i+2*grid_size][j].harm_pot;
+        //      up    = world[i][j-2*grid_size].harm_pot;
+        //      down  = world[i][j+2*grid_size].harm_pot;
 
-      if((left == 0.0 && right == 0.0))
-        left = 1.0;
-      if((up == 0.0 && down == 0.0))
-        up = 1.0;
+        if((left == 0.0 && right == 0.0))
+          left = 1.0;
+        if((up == 0.0 && down == 0.0))
+          up = 1.0;
 
 
-      //they are inverted or are they? --> ??
-      double x_subgoal = (left - right);
-      double y_subgoal = -(up - down);
+        //they are inverted or are they? --> ??
+        double x_subgoal = (left - right);
+        double y_subgoal = -(up - down);
 
-      //find direction for robot to move
-      world[i][j].angle_pot = atan2f(float(y_subgoal), float(x_subgoal));
+        //find direction for robot to move
+        world[i][j].angle_pot = atan2f(float(y_subgoal), float(x_subgoal));
+      }
     }
   }
 
@@ -1659,7 +1760,7 @@ void RosMappingGUI::navGoal(){
 
   //make turn to right angle
   double temp = fabs(new_angle - yaw_rot);
-//  new_angle = temp;
+  //new_angle = temp;
   if(new_angle > yaw_rot){
     new_angle = temp;
   }
@@ -1667,13 +1768,13 @@ void RosMappingGUI::navGoal(){
     new_angle = -temp;
   }
 
-  //not to turn too much - does not allow rotation greater than 90 deg
-  if(fabs(new_angle) > 1.00){
+//  //not to turn too much - does not allow rotation greater than 90 deg
+  if(fabs(new_angle) > 1.57){
     if(new_angle > 0){
-      new_angle = 1.0;
+      new_angle = 0.7;
     }
     else{
-      new_angle = -1.0;
+      new_angle = -0.7;
     }
   }
 
