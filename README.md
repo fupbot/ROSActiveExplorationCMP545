@@ -1,5 +1,15 @@
-# ros_mapping_gui
-Simple mapper based on sonar reading to create map as robot moves around. <br>
+# ROS Active Exploration App
+Application developed during the 'Mobile Robotics' master's level course at INF-UFRGS. <br>
+As the contents of the course are taught, the topics were put into practice in this application. <br>
+It begins as a simple trajectory plotter and ends as an active exploration module. <br>
+The methodology used derives from my advisor's phD thesis entitled "Navegação exploratória baseada em problemas de valores de contorno" which uses harmonic potential fields for navigation and exploration, and it is available at https://bit.ly/3BE1Car <br>
+--------------- <br>
+GUI:   QT 4.9.2 with the ROS plugin. <br>
+OS:    ROS1 Noetic running ROSAria package and Ubuntu 20.04 <br>
+Robot: Pioneer 3DX and simulator Pioneer <br>
+--------------- <br>
+Version history: <br>
+
 v1.0 - Connects to /fupbot/nav_pack/ ROS navigator in a GUI showing trajectory and occupancy grid. <br>
 v1.1 - Creates occupancy grid for obstacles based on sonar data and shows robot at correct location and orientation. <br>
 v1.2 - Improved rendering of occupancy grid. <br>
