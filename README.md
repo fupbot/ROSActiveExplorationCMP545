@@ -18,5 +18,9 @@ v1.7 - Working exploration mode. <br>
 
 v1.8 - Improved exploration mode with local activation window. <br>
 v1.9 - Improved navigation. Pending vector speed control <br>
+v2.0 - Working active exploration. Final project for conclusion of 'Mobile Robotics Course'. <br>
+
+<img src="https://github.com/fupbot/Simple_ROS_mapper/blob/main/media/mapa_denso.gif" width="500">
+<br>
 
 
