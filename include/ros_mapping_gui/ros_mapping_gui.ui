@@ -213,7 +213,7 @@
    <property name="geometry">
     <rect>
      <x>40</x>
-     <y>330</y>
+     <y>320</y>
      <width>16</width>
      <height>23</height>
     </rect>
@@ -234,7 +234,7 @@
    <property name="geometry">
     <rect>
      <x>60</x>
-     <y>330</y>
+     <y>320</y>
      <width>71</width>
      <height>21</height>
     </rect>
@@ -287,7 +287,7 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>360</y>
+     <y>350</y>
      <width>101</width>
      <height>25</height>
     </rect>
@@ -316,13 +316,16 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>570</y>
+     <y>580</y>
      <width>118</width>
      <height>16</height>
     </rect>
    </property>
    <property name="value">
     <number>0</number>
+   </property>
+   <property name="textVisible">
+    <bool>true</bool>
    </property>
   </widget>
   <widget class="QLabel" name="lbl_x_3">
@@ -391,7 +394,7 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>430</y>
+     <y>410</y>
      <width>101</width>
      <height>25</height>
     </rect>
@@ -407,7 +410,7 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>460</y>
+     <y>440</y>
      <width>101</width>
      <height>25</height>
     </rect>
@@ -423,7 +426,7 @@
    <property name="geometry">
     <rect>
      <x>60</x>
-     <y>490</y>
+     <y>470</y>
      <width>70</width>
      <height>21</height>
     </rect>
@@ -445,7 +448,7 @@
    <property name="geometry">
     <rect>
      <x>40</x>
-     <y>480</y>
+     <y>460</y>
      <width>21</width>
      <height>31</height>
     </rect>
@@ -466,7 +469,7 @@
    <property name="geometry">
     <rect>
      <x>60</x>
-     <y>520</y>
+     <y>500</y>
      <width>71</width>
      <height>21</height>
     </rect>
@@ -485,7 +488,7 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>520</y>
+     <y>500</y>
      <width>31</width>
      <height>21</height>
     </rect>
@@ -506,7 +509,7 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>400</y>
+     <y>380</y>
      <width>101</width>
      <height>23</height>
     </rect>
@@ -636,7 +639,7 @@
     <number>1</number>
    </property>
    <property name="value">
-    <number>20</number>
+    <number>30</number>
    </property>
   </widget>
   <widget class="QLabel" name="lbl_y_4">
@@ -697,7 +700,7 @@
     <number>1</number>
    </property>
    <property name="value">
-    <number>5</number>
+    <number>4</number>
    </property>
   </widget>
   <widget class="QLabel" name="lbl_msgs_2">
@@ -729,13 +732,59 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>540</y>
+     <y>550</y>
      <width>111</width>
      <height>28</height>
     </rect>
    </property>
    <property name="text">
     <string extracomment="4">Wall Follow</string>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="sp_base_speed">
+   <property name="geometry">
+    <rect>
+     <x>90</x>
+     <y>530</y>
+     <width>41</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="maximum">
+    <number>5</number>
+   </property>
+   <property name="singleStep">
+    <number>1</number>
+   </property>
+   <property name="stepType">
+    <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+   </property>
+   <property name="value">
+    <number>1</number>
+   </property>
+   <property name="displayIntegerBase">
+    <number>10</number>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lbl_y_6">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>530</y>
+     <width>71</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Ubuntu</family>
+     <pointsize>12</pointsize>
+     <weight>50</weight>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>Base Vel.</string>
    </property>
   </widget>
  </widget>

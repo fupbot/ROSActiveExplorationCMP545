@@ -43,7 +43,9 @@ struct Obstacle {
   bool path_cell;     //to determine whether it is a cell that was in the path of robot
   bool unused_var;    //just to keep off the annoying padding warning
   float angle_pot;    //angle to plot field
-  double harm_pot;     //harmonic potential
+  double harm_pot;    //harmonic potential
+  int hole_pot;       //propety to close holes outside map
+  float align;
 };
 
 //global variables and general program parameters
